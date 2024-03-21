@@ -59,5 +59,5 @@ app.start();
 // Listen for http connections
 httpServer.listen(parseInt(process.env.HTTP_PORT || 2011), () => {
 
-	console.log(`http server running);
+	console.log(`http server running`);
 });
