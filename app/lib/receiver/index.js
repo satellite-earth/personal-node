@@ -2,6 +2,12 @@ const EventEmitter = require('events');
 const { randomUUID } = require('crypto');
 const { verifyEvent } = require('nostr-tools');
 
+function safeVerify(event){
+	try {
+		return verifyEvent(event)
+	} catch (error) {}
+	return false
+}
 
 class Relay extends EventEmitter {
 
@@ -56,7 +62,7 @@ class Relay extends EventEmitter {
 				this.connected = false;
 				this.emit('disconnect', this);
 			}
-			
+
 		})
 
 		this.ws.onmessage = (message) => {
@@ -82,7 +88,7 @@ class Relay extends EventEmitter {
 
 						if (this.seen.has(event.id)) { return; }
 
-						if (this.options.skipVerification || verifyEvent(event)) {
+						if (this.options.skipVerification || safeVerify(event)) {
 
 							this.emit('event', event);
 						}
@@ -309,7 +315,7 @@ class Receiver extends EventEmitter {
 
 				clearTimeout(this.remote[relay.url].reconnecting);
 				this.remote[relay.url].reconnectDelay = 500;
-			}	
+			}
 
 			this.emit('relay:status', {
 				status: 'connected',
