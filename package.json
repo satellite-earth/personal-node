@@ -1,7 +1,7 @@
 {
-	"name": "satellite-node",
+	"name": "node",
 	"version": "0.0.1",
-	"description": "satellite-node-instance is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
+	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
 	"main": "index.js",
 	"scripts": {
 		"rebuild": "./node_modules/.bin/electron-rebuild --version 28.2.0",
