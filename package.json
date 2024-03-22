@@ -4,7 +4,8 @@
   "description": "satellite-node-instance is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
   "main": "index.js",
   "scripts": {
-    "rebuild": "./node_modules/.bin/electron-rebuild --version 28.2.0"
+    "rebuild": "./node_modules/.bin/electron-rebuild --version 28.2.0",
+    "format": "prettier -w ."
   },
   "keywords": [
     "nostr"
@@ -25,6 +26,7 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
-    "electron-rebuild": "^3.2.9"
+    "electron-rebuild": "^3.2.9",
+    "prettier": "^3.2.5"
   }
 }
