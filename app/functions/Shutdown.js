@@ -1,6 +1,4 @@
-
 module.exports = (app) => {
-
 	console.log('node shutting down gracefully...');
 
 	app.control.stop();

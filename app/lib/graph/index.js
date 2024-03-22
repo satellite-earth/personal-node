@@ -1,8 +1,5 @@
-
 class Graph {
-
-	constructor (database) {
-
+	constructor(database) {
 		// <pubkey>: { <created_at>, <set> }
 		this.contacts = {};
 
@@ -10,70 +7,61 @@ class Graph {
 		this.profile = {};
 	}
 
-	add (event) {
-
+	add(event) {
 		if (event.kind === 0) {
-
 			this.addProfile(event);
-
 		} else if (event.kind === 3) {
-
 			this.addContacts(event);
 		}
 	}
 
-	addContacts (event) {
-
+	addContacts(event) {
 		const existing = this.contacts[event.pubkey];
 
 		// Add or overwrite an existing (older) contacts list
 		if (!existing || existing.created_at < event.created_at) {
-
 			this.contacts[event.pubkey] = {
 				created_at: event.created_at,
-				set: new Set(event.tags.filter(tag => {
-					return tag[0] === 'p';
-				}).map(tag => {
-					return tag[1];
-				}))
+				set: new Set(
+					event.tags
+						.filter((tag) => {
+							return tag[0] === 'p';
+						})
+						.map((tag) => {
+							return tag[1];
+						}),
+				),
 			};
 		}
 	}
 
-	addProfile (event) {
-
+	addProfile(event) {
 		const existing = this.profile[event.pubkey];
 
 		// Add or overwrite an existing (older) profile
 		if (!existing || existing.created_at < event.created_at) {
-
 			let profile;
 
 			try {
-
 				profile = JSON.parse(event.content);
-
 			} catch (err) {
-
 				console.log('Failed to parse profile', err);
 			}
 
 			if (profile) {
-
 				this.profile[event.pubkey] = {
 					created_at: event.created_at,
 					profile: {
-						name: profile.name || profile.display
+						name: profile.name || profile.display,
 						// TODO maybe store other properties
 						// TODO maybe truncate values
-					}
+					},
 				};
 			}
 		}
 	}
 
-	getNodes (roots = []) {
-
+	getNodes(roots = []) {
 		const u = {};
 
 		// Init u with root pubkeys
@@ -82,11 +70,11 @@ class Graph {
 		}
 
 		const populate = (pubkeys, z) => {
-
 			for (let p of pubkeys) {
-
 				// If pubkey's contacts don't exist, skip it
-				if (!this.contacts[p]) { continue; }
+				if (!this.contacts[p]) {
+					continue;
+				}
 
 				//console.log('this.contacts[p].set', this.contacts[p].set);
 
@@ -94,18 +82,18 @@ class Graph {
 				// contact has not been recorded, create an
 				// entry at the current degrees of separation,
 				// otherwise increment the number of occurances
-				this.contacts[p].set.forEach(c => {
-
+				this.contacts[p].set.forEach((c) => {
 					// Don't count self-follow
-					if (p === c) { return; }
+					if (p === c) {
+						return;
+					}
 
 					if (!u[c]) {
-
 						u[c] = { z, n: 1 };
-
 					} else {
-
-						if (u[c].z > z) { return; }
+						if (u[c].z > z) {
+							return;
+						}
 
 						u[c].n++;
 					}
@@ -120,25 +108,28 @@ class Graph {
 		// On the second pass, populate u with
 		// all the pubkeys that are followed
 		// by any pubkey that root follows
-		populate(Object.keys(u).filter(p => {
-			return u[p].z > 0;
-		}), 2);
+		populate(
+			Object.keys(u).filter((p) => {
+				return u[p].z > 0;
+			}),
+			2,
+		);
 
 		// Return list of pubkeys sorted by degrees
 		// of separation and number of occurances
-		return Object.keys(u).map(p => {
-			return { ...u[p], p };
-		}).sort((a, b) => {
-			return a.z === b.z ? b.n - a.n : a.z - b.z;
-		});
+		return Object.keys(u)
+			.map((p) => {
+				return { ...u[p], p };
+			})
+			.sort((a, b) => {
+				return a.z === b.z ? b.n - a.n : a.z - b.z;
+			});
 	}
 
-	getProfile (pubkey) {
-
+	getProfile(pubkey) {
 		const record = this.profile[pubkey];
 
 		if (record) {
-
 			return record.profile;
 		}
 	}

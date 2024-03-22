@@ -10,12 +10,12 @@ global.WebSocket = WebSocket;
 
 // Create websocket server
 const wss = new WebSocket.WebSocketServer({
-	port: parseInt(process.env.PORT || 2012)
+	port: parseInt(process.env.PORT || 2012),
 });
 
 const app = new App({
 	path: process.env.DATA_PATH,
-	auth: process.env.AUTH
+	auth: process.env.AUTH,
 });
 
 // Attach http routes
@@ -28,22 +28,20 @@ wss.on('headers', (headers, request) => {
 
 // Setup handlers for new connections
 wss.on('connection', (ws, req) => {
-
 	// Handle new connection
 	const conn = app.relay.connect(ws, req);
 
-	if (!conn) { return; }
+	if (!conn) {
+		return;
+	}
 
 	ws.on('message', (buffer) => {
-
 		app.relay.message(buffer, conn);
 	});
 
 	ws.on('close', () => {
-
 		app.relay.disconnect(ws);
 	});
-
 });
 
 // Allow parent (if any) to tell the node to shut itself
@@ -51,13 +49,12 @@ wss.on('connection', (ws, req) => {
 process.on('SIGINT', () => {
 	console.log('instance got SIGINT');
 	app.stop();
-	process.exit(0)
+	process.exit(0);
 });
 
 app.start();
 
 // Listen for http connections
 httpServer.listen(parseInt(process.env.HTTP_PORT || 2011), () => {
-
 	console.log(`http server running`);
 });

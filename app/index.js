@@ -1,4 +1,3 @@
-
 const path = require('path');
 
 const Database = require('./lib/sqlite');
@@ -15,11 +14,8 @@ const Control = require('./control');
 // not broken anything, try to build the multiinstance
 // thing
 
-
 class App {
-
-	constructor (config = {}) {
-
+	constructor(config = {}) {
 		this.config = config;
 
 		console.log('app config', this.config);
@@ -27,7 +23,7 @@ class App {
 		// Init embedded sqlite database
 		this.database = new Database({
 			directory: this.config.path,
-			reportInterval: 1000
+			reportInterval: 1000,
 		});
 
 		// Initialize model of the social graph
@@ -39,7 +35,7 @@ class App {
 		// API for controlling the node by proxy - create config
 		// file in the db directory unless otherwise specified
 		this.control = new Control(this, {
-			configPath: path.join(this.config.path, 'node.json')
+			configPath: path.join(this.config.path, 'node.json'),
 			//configPath: process.env.CONFIG_PATH || path.join(this.database.config.directory, 'node.json')
 			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',
 		});
@@ -47,12 +43,10 @@ class App {
 		// Create the relay, connecting to
 		// the node's control interface
 		this.relay = new Relay(this.database, {
-
 			// Localhost relay port number
 			//port: process.env.PORT,
 
 			connect: (ws, req) => {
-
 				// TODO in the multi relay set up, ignore
 				// connections if the subdomain does not
 				// match the relay . . . there is only one
@@ -63,45 +57,43 @@ class App {
 			},
 
 			// Control interface
-			controlApi: (...args) => { this.control.action(...args); },
+			controlApi: (...args) => {
+				this.control.action(...args);
+			},
 
 			// Control authorization
-			controlAuth: (data) => { return data === this.config.auth; }
+			controlAuth: (data) => {
+				return data === this.config.auth;
+			},
 		});
 
 		// Handle database status reports
 		this.database.on('status', (data) => {
-
 			this.control.handleDatabaseStatus(data);
 		});
 
 		// Handle relay status reports
 		this.receiver.on('relay:status', (data) => {
-
 			this.control.handleRelayStatus(data);
 		});
 
 		// Pass received events to the relay
 		this.receiver.on('event:received', (data) => {
-
 			this.control.handleListenerReceived(data);
 		});
 
 		// Handle new events being saved by relay
 		this.relay.on('event:inserted', (data) => {
-
 			this.control.handleInserted(data);
 		});
 	}
 
-	start () {
-
+	start() {
 		// Load metadata in from the db into the social graph
 		Functions.Startup(this);
 	}
 
-	stop () {
-
+	stop() {
 		Functions.Shutdown(this);
 	}
 }

@@ -1,12 +1,11 @@
-
 module.exports = (app) => {
-
-	const events = app.database.queryEvents([{
-		kinds: [ 0, 3 ]
-	}]);
+	const events = app.database.queryEvents([
+		{
+			kinds: [0, 3],
+		},
+	]);
 
 	for (let event of events) {
-
 		app.graph.add(event);
 	}
 

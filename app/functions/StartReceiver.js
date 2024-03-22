@@ -1,8 +1,6 @@
 module.exports = (app, data) => {
-
 	// Listen if not already
 	if (!app.control.status.listening) {
-
 		const status = { listening: true };
 
 		// Report status to gui
@@ -14,11 +12,11 @@ module.exports = (app, data) => {
 		// Report status to parent process
 		app.control.sendToParentProcess({
 			type: 'LISTENER_STATE',
-			data: status
+			data: status,
 		});
 
 		app.control.log({
-			text: '[CONTROL] SATELLITE RECEIVER LISTENING'
+			text: '[CONTROL] SATELLITE RECEIVER LISTENING',
 		});
 	}
 };

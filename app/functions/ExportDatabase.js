@@ -2,44 +2,42 @@ const fs = require('fs');
 const path = require('path');
 const Util = require('../lib/util');
 
-
 module.exports = (app, params) => {
+	const events = app.database.queryEvents(params.filters || [{}]);
 
-  const events = app.database.queryEvents(params.filters || [{}]);
+	return Util.writeJsonl(events, {
+		outputPath: params.path,
+		outputName: params.name,
+		compress: true,
+	});
 
-  return Util.writeJsonl(events, {
-    outputPath: params.path,
-    outputName: params.name,
-    compress: true
-  });
+	//return new Promise((resolve, reject) => {
 
-  //return new Promise((resolve, reject) => {
+	// const writableStream = fs.createWriteStream(path.join(params.path, `${params.name}.jsonl`));
 
-    // const writableStream = fs.createWriteStream(path.join(params.path, `${params.name}.jsonl`));
+	// const transform = new Transform({
+	//   transform: (json, encoding, callback) => {
+	//     callback(null, json);
+	//   }
+	// });
 
-    // const transform = new Transform({
-    //   transform: (json, encoding, callback) => {
-    //     callback(null, json);
-    //   }
-    // });
+	// const indexf = events.length - 1;
 
-    // const indexf = events.length - 1;
+	// transform.pipe(writableStream);
 
-    // transform.pipe(writableStream);
+	// events.forEach((event, index) => {
+	//   transform.write(JSON.stringify(event) + (index === indexf ? '' : '\n'));
+	// });
 
-    // events.forEach((event, index) => {
-    //   transform.write(JSON.stringify(event) + (index === indexf ? '' : '\n'));
-    // });
+	// transform.end();
 
-    // transform.end();
+	// writableStream.on('finish', () => {
+	//   resolve();
+	// });
 
-    // writableStream.on('finish', () => {
-    //   resolve();
-    // });
+	// writableStream.on('error', (err) => {
+	//   reject();
+	// });
 
-    // writableStream.on('error', (err) => {
-    //   reject();
-    // });
-
-  //});
+	//});
 };
