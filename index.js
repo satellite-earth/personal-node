@@ -55,6 +55,7 @@ process.on('SIGINT', () => {
 app.start();
 
 // Listen for http connections
+const port = parseInt(process.env.HTTP_PORT || 2011);
 httpServer.listen(parseInt(process.env.HTTP_PORT || 2011), () => {
-	console.log(`http server running`);
+	console.log(`http server running on`, port);
 });
