@@ -4,18 +4,19 @@ require('dotenv').config();
 const WebSocket = require('ws');
 const Http = require('./http');
 const App = require('./app');
+const { PORT, DATA_PATH, AUTH, HTTP_PORT } = require('./env.js');
 
 // Needed for nostr-tools relay lib
 global.WebSocket = WebSocket;
 
 // Create websocket server
 const wss = new WebSocket.WebSocketServer({
-	port: parseInt(process.env.PORT || 2012),
+	port: PORT,
 });
 
 const app = new App({
-	path: process.env.DATA_PATH,
-	auth: process.env.AUTH,
+	path: DATA_PATH,
+	auth: AUTH,
 });
 
 // Attach http routes
@@ -55,7 +56,6 @@ process.on('SIGINT', () => {
 app.start();
 
 // Listen for http connections
-const port = parseInt(process.env.HTTP_PORT || 2011);
-httpServer.listen(parseInt(process.env.HTTP_PORT || 2011), () => {
-	console.log(`http server running on`, port);
+httpServer.listen(HTTP_PORT, () => {
+	console.log(`http server running on`, HTTP_PORT);
 });

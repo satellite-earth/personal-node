@@ -3,6 +3,8 @@ const Sqlite3 = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
+const { NATIVE_BINDINGS_PATH } = require('../../../env.js');
+
 const Util = {
 	// If filter key is indexable
 	indexable: (key) => {
@@ -48,9 +50,9 @@ class Database extends EventEmitter {
 			// /x86/better_sqlite3.node
 
 			// Optionally use native bindings indicated by environment
-			nativeBinding: process.env.NATIVE_BINDINGS_PATH
+			nativeBinding: NATIVE_BINDINGS_PATH
 				? path.join(
-						process.env.NATIVE_BINDINGS_PATH,
+						NATIVE_BINDINGS_PATH,
 						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`,
 					)
 				: undefined,

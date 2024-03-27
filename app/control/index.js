@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Util = require('../lib/util');
 
 const API = require('./API');
+const { PORT } = require('../../env.js');
 
 class Control {
 	constructor(app, options) {
@@ -20,7 +21,7 @@ class Control {
 		// Load initial config from disk
 		this.config = {
 			cacheLevel: 3,
-			relayPort: parseInt(process.env.PORT),
+			relayPort: PORT,
 			autoListen: true,
 			logsEnabled: true,
 			pubkeys: [],
