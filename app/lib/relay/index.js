@@ -1,7 +1,6 @@
-const EventEmitter = require('events');
-const { verifyEvent } = require('nostr-tools');
-// const { WebSocketServer } = require('ws');
-const crypto = require('crypto');
+import EventEmitter from 'events';
+import { verifyEvent } from 'nostr-tools';
+import crypto from 'crypto';
 
 class Relay extends EventEmitter {
 	constructor(database, config = {}) {
@@ -442,4 +441,4 @@ class Relay extends EventEmitter {
 	// }
 }
 
-module.exports = Relay;
+export default Relay;

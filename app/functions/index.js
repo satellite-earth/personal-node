@@ -1,11 +1,11 @@
-const ClearDatabase = require('./ClearDatabase');
-const ExportDatabase = require('./ExportDatabase');
-const StartReceiver = require('./StartReceiver');
-const Startup = require('./Startup');
-const StopReceiver = require('./StopReceiver');
-const Shutdown = require('./Shutdown');
+import ClearDatabase from './ClearDatabase.js';
+import ExportDatabase from './ExportDatabase.js';
+import StartReceiver from './StartReceiver.js';
+import Startup from './Startup.js';
+import StopReceiver from './StopReceiver.js';
+import Shutdown from './Shutdown.js';
 
-module.exports = {
+export {
 	ClearDatabase,
 	ExportDatabase,
 	StartReceiver,

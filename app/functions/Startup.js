@@ -1,4 +1,4 @@
-module.exports = (app) => {
+export default function Startup(app) {
 	const events = app.database.queryEvents([
 		{
 			kinds: [0, 3],
@@ -11,4 +11,4 @@ module.exports = (app) => {
 
 	// Set initial stats for the database
 	app.control.updateDatabaseStatus();
-};
+}

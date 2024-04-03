@@ -1,8 +1,8 @@
-const OS = require('os');
+import OS from 'os';
 
-const Functions = require('../functions');
+import * as Functions from '../functions/index.js';
 
-module.exports = (control) => {
+const API = (control) => {
 	return {
 		CLEAR_DATABASE: () => {
 			Functions.ClearDatabase(control.app);
@@ -97,3 +97,5 @@ module.exports = (control) => {
 		},
 	};
 };
+
+export default API;

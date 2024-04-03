@@ -12,10 +12,4 @@ const HTTP_PORT = parseInt(process.env.HTTP_PORT) || 2011;
 const AUTH =
 	process.env.AUTH || require('crypto').randomBytes(16).toString('hex');
 
-module.exports = {
-	NATIVE_BINDINGS_PATH,
-	DATA_PATH,
-	PORT,
-	HTTP_PORT,
-	AUTH,
-};
+export { NATIVE_BINDINGS_PATH, DATA_PATH, PORT, HTTP_PORT, AUTH };

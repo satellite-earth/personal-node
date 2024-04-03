@@ -1,9 +1,12 @@
-const EventEmitter = require('events');
-const Sqlite3 = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+import EventEmitter from 'events';
+import Sqlite3 from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
 
-const { NATIVE_BINDINGS_PATH } = require('../../../env.js');
+// TODO: find a better way to import these modules
+import { SQLiteEventStore } from '../../../../core/dist/sqlite-event-store/index.js';
+
+import { NATIVE_BINDINGS_PATH } from '../../../env.js';
 
 const Util = {
 	// If filter key is indexable
@@ -28,7 +31,7 @@ class Database extends EventEmitter {
 		super();
 
 		this.config = {
-			directory: __dirname,
+			directory: 'data',
 			name: 'events',
 			...config,
 		};
@@ -65,58 +68,12 @@ class Database extends EventEmitter {
 
 		this.sub = {};
 
+		this.eventStore = new SQLiteEventStore(this.db);
+		this.eventStore.setup();
+
 		if (config.wal !== false) {
 			this.db.pragma('journal_mode = WAL');
 		}
-
-		this.db.transaction(() => {
-			// Create events table
-			this.db
-				.prepare(
-					`
-				CREATE TABLE IF NOT EXISTS events (
-					id TEXT(64) PRIMARY KEY,
-					created_at INTEGER,
-					pubkey TEXT(64),
-					sig TEXT(128),
-					kind INTEGER,
-					content TEXT,
-					tags TEXT
-				)
-			`,
-				)
-				.run();
-
-			// Create tags table
-			this.db
-				.prepare(
-					`
-				CREATE TABLE IF NOT EXISTS tags (
-					i INTEGER PRIMARY KEY AUTOINCREMENT,
-					e TEXT(64) REFERENCES events(id),
-					t TEXT(1),
-					v TEXT
-				)
-			`,
-				)
-				.run();
-
-			// Create indices
-			const indices = [
-				this.db.prepare(
-					'CREATE INDEX IF NOT EXISTS idx_created_at ON events(created_at)',
-				),
-				this.db.prepare(
-					'CREATE INDEX IF NOT EXISTS idx_pubkey ON events(pubkey)',
-				),
-				this.db.prepare('CREATE INDEX IF NOT EXISTS idx_kind ON events(kind)'),
-				this.db.prepare('CREATE INDEX IF NOT EXISTS idx_e ON tags(e)'),
-				this.db.prepare('CREATE INDEX IF NOT EXISTS idx_t ON tags(t)'),
-				this.db.prepare('CREATE INDEX IF NOT EXISTS idx_v ON tags(v)'),
-			];
-
-			indices.forEach((statement) => statement.run());
-		})();
 
 		// if (config.reportInterval) {
 
@@ -131,165 +88,15 @@ class Database extends EventEmitter {
 		// }
 	}
 
-	addEvent(event, options = {}) {
-		// Don't store ephemeral events in db,
-		// just return the event directly
-		if (
-			!options.preserveEphemeral &&
-			event.kind >= 20000 &&
-			event.kind < 30000
-		) {
-			return event;
-		}
+	addEvent(event, options) {
+		const inserted = this.eventStore.addEvent(event, options);
 
-		const result = this.db.transaction(() => {
-			const _result = this.db
-				.prepare(
-					`
-				INSERT OR IGNORE INTO events (id, created_at, pubkey, sig, kind, content, tags)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
-			`,
-				)
-				.run([
-					event.id,
-					event.created_at,
-					event.pubkey,
-					event.sig,
-					event.kind,
-					event.content,
-					JSON.stringify(event.tags),
-				]);
-
-			// If event inserted, index tags
-			if (_result.changes) {
-				for (let tag of event.tags) {
-					if (tag[0].length === 1) {
-						const _result = this.db
-							.prepare(
-								`
-							INSERT INTO tags (e, t, v)
-							VALUES (?, ?, ?)
-						`,
-							)
-							.run([event.id, tag[0], tag[1]]);
-					}
-				}
-
-				// By default, remove older replaceable
-				// events and all their associated tags
-				if (!options.preserveReplaceable) {
-					let replaceable;
-
-					if (
-						// Normal replaceable event
-						event.kind === 0 ||
-						event.kind === 3 ||
-						(event.kind >= 10000 && event.kind < 20000)
-					) {
-						replaceable = this.db
-							.prepare(
-								`
-							SELECT events.id, events.created_at FROM events
-							WHERE kind = ? AND pubkey = ?
-						`,
-							)
-							.all([event.kind, event.pubkey]);
-					} else if (event.kind >= 30000 && event.kind < 40000) {
-						// Parameterized
-
-						for (let tag of event.tags) {
-							if (tag[0] === 'd') {
-								replaceable = this.db
-									.prepare(
-										`
-									SELECT events.id, events.created_at FROM events
-									INNER JOIN tags ON events.id = tags.e
-									WHERE kind = ? AND pubkey = ? AND tags.t = ? AND tags.v = ?
-								`,
-									)
-									.all([event.kind, event.pubkey, 'd', tag[1]]);
-
-								break;
-							}
-						}
-					}
-
-					// If found other events that may need to be replaced,
-					// sort the events according to timestamp descending,
-					// falling back to id lexical order ascending as per
-					// NIP-01. Remove all non-most-recent events and tags.
-					if (replaceable && replaceable.length > 1) {
-						// console.log('found replaceable', replaceable);
-						// console.log('for event', event.id, event.kind);
-
-						const removeIds = replaceable
-							.sort((a, b) => {
-								return a.created_at === b.created_at
-									? a.id.localeCompare(b.id)
-									: b.created_at - a.created_at;
-							})
-							.slice(1)
-							.map((item) => {
-								return item.id;
-							});
-
-						this.db
-							.prepare(
-								`
-							DELETE FROM tags
-							WHERE e IN ${Util.pmap(removeIds)}
-						`,
-							)
-							.run(removeIds);
-
-						this.db
-							.prepare(
-								`
-							DELETE FROM events
-							WHERE id IN ${Util.pmap(removeIds)}
-						`,
-							)
-							.run(removeIds);
-
-						// If the event that was just inserted was one of
-						// the events that was removed, return null so to
-						// indicate that the event was in effect *not*
-						// upserted and thus, if using the DB for a nostr
-						// relay, does not need to be pushed to clients
-						if (removeIds.indexOf(event.id) !== -1) {
-							return null;
-						}
-					}
-				}
-			}
-
-			return _result;
-		})();
-
-		// Return record only if upserted
-		return result && result.changes ? event : null;
+		// TODO: update to just return boolean
+		return inserted ? event : null;
 	}
 
 	removeEvent(params) {
-		this.db.transaction(() => {
-			this.db
-				.prepare(
-					`
-				DELETE FROM tags
-				WHERE e = ?
-			`,
-				)
-				.run([params.id]);
-
-			this.db
-				.prepare(
-					`
-				DELETE FROM events
-				WHERE id = ? AND pubkey = ?
-			`,
-				)
-				.run([params.id, params.pubkey]);
-		})();
+		if (params.id) return this.eventStore.removeEvent(params.id);
 	}
 
 	addSubscription(subid, filters) {
@@ -313,107 +120,7 @@ class Database extends EventEmitter {
 	}
 
 	queryEvents(filters) {
-		const p = (_p) => {
-			return `(${_p.map(() => `?`).join(', ')})`;
-		};
-
-		const results = filters.map((filter) => {
-			let sql =
-				'SELECT events.id, events.created_at, events.pubkey, events.sig, events.kind, events.content, events.tags FROM events';
-
-			const conditions = [];
-			const parameters = [];
-
-			const tagQueries = Object.keys(filter).filter((t) => {
-				return Util.indexable(t);
-			});
-
-			if (tagQueries.length > 0) {
-				sql += ' INNER JOIN tags ON events.id = tags.e';
-			}
-
-			if (typeof filter.since === 'number') {
-				conditions.push(`created_at >= ?`);
-				parameters.push(filter.since);
-			}
-
-			if (typeof filter.until === 'number') {
-				conditions.push(`created_at < ?`);
-				parameters.push(filter.until);
-			}
-
-			if (filter.ids) {
-				conditions.push(`id IN ${Util.pmap(filter.ids)}`);
-				parameters.push(...filter.ids);
-			}
-
-			if (filter.kinds) {
-				conditions.push(`kind IN ${Util.pmap(filter.kinds)}`);
-				parameters.push(...filter.kinds);
-			}
-
-			if (filter.authors) {
-				conditions.push(`pubkey IN ${Util.pmap(filter.authors)}`);
-				parameters.push(...filter.authors);
-			}
-
-			for (let t of tagQueries) {
-				conditions.push(`tags.t = ?`);
-				parameters.push(t.slice(1));
-
-				conditions.push(`tags.v IN ${Util.pmap(filter[t])}`);
-				parameters.push(...filter[t]);
-			}
-
-			if (parameters.length > 0) {
-				sql += ` WHERE ${conditions.join(' AND ')}`;
-			}
-
-			sql = sql + ' ORDER BY created_at DESC';
-
-			if (filter.limit) {
-				parameters.push(filter.limit);
-				sql += ' LIMIT ?';
-			}
-
-			return this.db.prepare(sql).all(parameters);
-		});
-
-		let events;
-
-		// For multiple filters, results need
-		// to be merged to avoid duplicates
-		if (results.length > 1) {
-			const merged = {};
-
-			for (let result of results) {
-				for (let event of result) {
-					merged[event.id] = event;
-				}
-			}
-
-			// Return sorted unique array of
-			// events that match any filter,
-			// sorting deterministically by
-			// created_at, falling back to id
-			events = Object.keys(merged)
-				.map((id) => {
-					return merged[id];
-				})
-				.sort((a, b) => {
-					const deltat = b.created_at - a.created_at;
-					return deltat === 0 ? parseInt(b, 16) - parseInt(a, 16) : deltat;
-				});
-		} else {
-			events = results[0];
-		}
-
-		events.forEach((event) => {
-			event.tags = JSON.parse(event.tags);
-		});
-
-		// Return events matching single filter
-		return events;
+		return this.eventStore.getEventsForFilters(filters);
 	}
 
 	matchSubscriptions(event) {
@@ -517,4 +224,4 @@ class Database extends EventEmitter {
 	}
 }
 
-module.exports = Database;
+export default Database;

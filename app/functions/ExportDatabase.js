@@ -1,8 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const Util = require('../lib/util');
+import * as Util from '../lib/util/index.js';
 
-module.exports = (app, params) => {
+export default function ExportDatabase(app, params) {
 	const events = app.database.queryEvents(params.filters || [{}]);
 
 	return Util.writeJsonl(events, {
@@ -40,4 +38,4 @@ module.exports = (app, params) => {
 	// });
 
 	//});
-};
+}

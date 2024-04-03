@@ -1,8 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { Transform } = require('stream');
-const { nip19 } = require('nostr-tools');
-const ProcessStream = require('process-streams');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { Transform } from 'stream';
+import { nip19 } from 'nostr-tools';
+import ProcessStream from 'process-streams';
 
 const formatPubkey = (pubkey) => {
 	const npub = nip19.npubEncode(pubkey);
@@ -97,9 +98,9 @@ const writeJsonl = (jsonArray, params) => {
 	});
 };
 
-const CompressZSTD = (params) => {
-	console.log('bin path', path.join(__dirname, 'bin/zstd'));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const CompressZSTD = (params) => {
 	return new Promise((resolve, reject) => {
 		const ps = new ProcessStream();
 
@@ -136,9 +137,4 @@ const CompressZSTD = (params) => {
 	});
 };
 
-module.exports = {
-	formatPubkey,
-	loadJson,
-	saveJson,
-	writeJsonl,
-};
+export { formatPubkey, loadJson, saveJson, writeJsonl };

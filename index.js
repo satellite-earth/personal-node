@@ -1,16 +1,16 @@
-require('dotenv').config();
+import 'dotenv/config.js';
+import WebSocket, { WebSocketServer } from 'ws';
 
 //const Express = require('express');
-const WebSocket = require('ws');
-const Http = require('./http');
-const App = require('./app');
-const { PORT, DATA_PATH, AUTH, HTTP_PORT } = require('./env.js');
+import Http from './http/index.js';
+import App from './app/index.js';
+import { PORT, DATA_PATH, AUTH, HTTP_PORT } from './env.js';
 
 // Needed for nostr-tools relay lib
 global.WebSocket = WebSocket;
 
 // Create websocket server
-const wss = new WebSocket.WebSocketServer({
+const wss = new WebSocketServer({
 	port: PORT,
 });
 

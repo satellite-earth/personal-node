@@ -1,6 +1,6 @@
-const EventEmitter = require('events');
-const { randomUUID } = require('crypto');
-const { verifyEvent } = require('nostr-tools');
+import EventEmitter from 'events';
+import { randomUUID } from 'crypto';
+import { verifyEvent } from 'nostr-tools';
 
 function safeVerify(event) {
 	try {
@@ -440,4 +440,4 @@ class Receiver extends EventEmitter {
 	}
 }
 
-module.exports = Receiver;
+export default Receiver;

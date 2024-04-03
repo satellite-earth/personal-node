@@ -1,8 +1,8 @@
-const crypto = require('crypto');
-const Util = require('../lib/util');
+import crypto from 'crypto';
+import * as Util from '../lib/util/index.js';
 
-const API = require('./API');
-const { PORT } = require('../../env.js');
+import API from './API.js';
+import { PORT } from '../../env.js';
 
 class Control {
 	constructor(app, options) {
@@ -274,4 +274,4 @@ class Control {
 	}
 }
 
-module.exports = Control;
+export default Control;

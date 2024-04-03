@@ -1,12 +1,12 @@
-const Express = require('express');
-const Cors = require('cors');
+import express from 'express';
+import Cors from 'cors';
 
-const Routes = require('./routes');
+import router from './routes.js';
 
-module.exports = (app) => {
+export default function createExpressServer(app) {
 	//const port = process.env.HTTP_PORT || 2011;
 
-	const server = Express();
+	const server = express();
 
 	server.use(Cors());
 
@@ -30,7 +30,7 @@ module.exports = (app) => {
 		next();
 	});
 
-	server.use(Routes());
+	server.use(router);
 
 	return server;
-};
+}

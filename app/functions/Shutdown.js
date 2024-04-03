@@ -1,4 +1,4 @@
-module.exports = (app) => {
+export default function Shutdown(app) {
 	console.log('node shutting down gracefully...');
 
 	app.control.stop();
@@ -10,4 +10,4 @@ module.exports = (app) => {
 	app.relay.stop();
 
 	//process.exit(0);
-};
+}

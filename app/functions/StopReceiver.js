@@ -1,4 +1,4 @@
-module.exports = (app, data) => {
+export default function StopReceiver(app, data) {
 	// Unlisten if listening
 	if (app.control.status.listening) {
 		const status = { listening: false };
@@ -18,4 +18,4 @@ module.exports = (app, data) => {
 			text: '[CONTROL] SATELLITE RECEIVER PAUSED',
 		});
 	}
-};
+}

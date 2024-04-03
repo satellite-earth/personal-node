@@ -1,4 +1,4 @@
-module.exports = (app, data) => {
+export default function StartReceiver(app, data) {
 	// Listen if not already
 	if (!app.control.status.listening) {
 		const status = { listening: true };
@@ -19,4 +19,4 @@ module.exports = (app, data) => {
 			text: '[CONTROL] SATELLITE RECEIVER LISTENING',
 		});
 	}
-};
+}

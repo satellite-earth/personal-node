@@ -1,12 +1,12 @@
-const path = require('path');
+import path from 'path';
 
-const Database = require('./lib/sqlite');
-const Graph = require('./lib/graph');
-const Receiver = require('./lib/receiver');
-const Relay = require('./lib/relay');
+import Database from './lib/sqlite/index.js';
+import Graph from './lib/graph/index.js';
+import Receiver from './lib/receiver/index.js';
+import Relay from './lib/relay/index.js';
 
-const Functions = require('./functions');
-const Control = require('./control');
+import * as Functions from './functions/index.js';
+import Control from './control/index.js';
 
 // KEEP WORKING . . . create an "app" sub dir and move
 // the logic there . . . you should be able to create
@@ -98,4 +98,4 @@ class App {
 	}
 }
 
-module.exports = App;
+export default App;
