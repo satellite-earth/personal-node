@@ -1,9 +1,12 @@
 import 'dotenv/config.js';
 import WebSocket, { WebSocketServer } from 'ws';
+import express from 'express';
+import path from 'path';
 
-import Http from './http/index.js';
+import { DesktopBlobServer } from '../core/dist/index.js';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, HTTP_PORT } from './env.js';
+import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';
 
 // Needed for nostr-tools relay lib
 global.WebSocket = WebSocket;
@@ -18,8 +21,12 @@ const app = new App({
 	auth: AUTH,
 });
 
-// Attach http routes
-const httpServer = Http(app);
+const blobMetadata = new BlossomSQLite(app.database.db);
+
+const blobStorage = new LocalStorage(path.join(app.config.path, 'blobs'));
+await blobStorage.setup();
+
+const blobServer = new DesktopBlobServer(blobStorage, blobMetadata);
 
 // Fix CORS for websocket
 wss.on('headers', (headers, request) => {
@@ -51,6 +58,11 @@ process.on('SIGINT', () => {
 	app.stop();
 	process.exit(0);
 });
+
+// Create http server
+const httpServer = express();
+
+httpServer.use(blobServer.router);
 
 app.start();
 
