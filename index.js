@@ -1,7 +1,6 @@
 import 'dotenv/config.js';
 import WebSocket, { WebSocketServer } from 'ws';
 
-//const Express = require('express');
 import Http from './http/index.js';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, HTTP_PORT } from './env.js';
