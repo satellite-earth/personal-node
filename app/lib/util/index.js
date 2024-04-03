@@ -109,7 +109,7 @@ const CompressZSTD = (params) => {
 			.spawn(
 				path.join(
 					__dirname,
-					`bin/${process.arch === 'arm64' ? 'arm64' : 'x86'}/zstd`,
+					`bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`,
 				),
 				[`-${typeof params.level === 'undefined' ? 7 : params.level}`],
 			)
