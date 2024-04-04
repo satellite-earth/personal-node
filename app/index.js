@@ -3,10 +3,10 @@ import path from 'path';
 import Database from './lib/sqlite/index.js';
 import Graph from './lib/graph/index.js';
 import Receiver from './lib/receiver/index.js';
-import Relay from './lib/relay/index.js';
 
 import * as Functions from './functions/index.js';
 import Control from './control/index.js';
+import { SQLiteEventStore, NostrRelay } from '../../core/dist/index.js';
 
 // KEEP WORKING . . . create an "app" sub dir and move
 // the logic there . . . you should be able to create
@@ -26,6 +26,9 @@ class App {
 			reportInterval: 1000,
 		});
 
+		this.eventStore = new SQLiteEventStore(this.database.db);
+		this.eventStore.setup();
+
 		// Initialize model of the social graph
 		this.graph = new Graph();
 
@@ -36,36 +39,39 @@ class App {
 		// file in the db directory unless otherwise specified
 		this.control = new Control(this, {
 			configPath: path.join(this.config.path, 'node.json'),
+			controlAuth: (auth) => {
+				return auth === this.config.auth;
+			},
 			//configPath: process.env.CONFIG_PATH || path.join(this.database.config.directory, 'node.json')
 			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',
 		});
 
 		// Create the relay, connecting to
 		// the node's control interface
-		this.relay = new Relay(this.database, {
-			// Localhost relay port number
-			//port: process.env.PORT,
+		this.relay = new NostrRelay(this.eventStore);
+		// 	// Localhost relay port number
+		// 	//port: process.env.PORT,
 
-			connect: (ws, req) => {
-				// TODO in the multi relay set up, ignore
-				// connections if the subdomain does not
-				// match the relay . . . there is only one
-				// single websocket server, but there are
-				// a bunch of differerent relays and databases
+		// 	connect: (ws, req) => {
+		// 		// TODO in the multi relay set up, ignore
+		// 		// connections if the subdomain does not
+		// 		// match the relay . . . there is only one
+		// 		// single websocket server, but there are
+		// 		// a bunch of differerent relays and databases
 
-				return true;
-			},
+		// 		return true;
+		// 	},
 
-			// Control interface
-			controlApi: (...args) => {
-				this.control.action(...args);
-			},
+		// 	// Control interface
+		// 	controlApi: (...args) => {
+		// 		this.control.action(...args);
+		// 	},
 
-			// Control authorization
-			controlAuth: (data) => {
-				return data === this.config.auth;
-			},
-		});
+		// 	// Control authorization
+		// 	controlAuth: (data) => {
+		// 		return data === this.config.auth;
+		// 	},
+		// });
 
 		// Handle database status reports
 		this.database.on('status', (data) => {
@@ -78,13 +84,13 @@ class App {
 		});
 
 		// Pass received events to the relay
-		this.receiver.on('event:received', (data) => {
-			this.control.handleListenerReceived(data);
+		this.receiver.on('event:received', (event) => {
+			this.eventStore.addEvent(event);
 		});
 
-		// Handle new events being saved by relay
-		this.relay.on('event:inserted', (data) => {
-			this.control.handleInserted(data);
+		// Handle new events being saved
+		this.eventStore.on('event:inserted', (event) => {
+			this.control.handleInserted(event);
 		});
 	}
 

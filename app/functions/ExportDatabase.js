@@ -1,7 +1,7 @@
 import * as Util from '../lib/util/index.js';
 
 export default function ExportDatabase(app, params) {
-	const events = app.database.queryEvents(params.filters || [{}]);
+	const events = app.eventStore.getEventsForFilters(params.filters || [{}]);
 
 	return Util.writeJsonl(events, {
 		outputPath: params.path,

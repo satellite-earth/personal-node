@@ -1,5 +1,5 @@
 export default function Startup(app) {
-	const events = app.database.queryEvents([
+	const events = app.eventStore.getEventsForFilters([
 		{
 			kinds: [0, 3],
 		},

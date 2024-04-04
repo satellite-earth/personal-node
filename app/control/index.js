@@ -10,6 +10,8 @@ class Control {
 
 		this.options = options;
 
+		this.authorizedConnections = new Set();
+
 		// Init status default values
 		this.status = {
 			listening: false,
@@ -37,9 +39,7 @@ class Control {
 	}
 
 	action(type, data) {
-		if (!this.api[type]) {
-			return;
-		}
+		if (!this.api[type]) return;
 
 		let result;
 
@@ -155,15 +155,6 @@ class Control {
 		});
 	}
 
-	handleListenerReceived(event) {
-		// Pass event to the relay
-		this.app.relay.event([null, event], null, {
-			// Relay handler doesn't need to verify
-			// event, already verified by receiver
-			skipVerification: true,
-		});
-	}
-
 	handleRelayStatus({ status, relay }) {
 		if (!relay) {
 			return;
@@ -244,12 +235,54 @@ class Control {
 		process.send(message);
 	}
 
+	handleConnect(ws, req) {}
+	handleDisconnect(ws) {
+		this.authorizedConnections.delete(ws);
+	}
+	handleMessage(buffer, ws) {
+		try {
+			const data = JSON.parse(buffer.toString());
+
+			if (data[0] === 'CONTROL') {
+				this.handleControlMessage(data, ws);
+			}
+		} catch (err) {
+			console.log(err);
+		}
+	}
+	handleControlMessage(message, ws) {
+		// Maybe authorize connection - maintain a flag or most recent
+		// auth status on each websocket so that config updates can
+		// be forwarded to multiple simultaneous control connections.
+		// Send client a notice when its auth state changes.
+		if (this.options.controlAuth && this.options.controlAuth(message[1])) {
+			this.authorizedConnections.add(ws);
+		} else {
+			this.authorizedConnections.delete(ws);
+			return;
+		}
+
+		// Invoke the action, sending response
+		// to each active control connection
+		this.action(message[2], message[3]);
+	}
+
+	attachToServer(wss) {
+		wss.on('connection', (ws, req) => {
+			this.handleConnect(ws, req);
+
+			ws.on('message', (data, isBinary) => {
+				this.handleMessage(data, ws);
+			});
+			ws.on('close', () => this.handleDisconnect(ws));
+		});
+	}
+
 	// Broadcast control status to authorized clients
 	broadcast(payload) {
-		this.app.relay.broadcast(payload, {
-			mode: 'CONTROL',
-			authorized: true,
-		});
+		for (const ws of this.authorizedConnections) {
+			ws.send(JSON.stringify(['CONTROL', payload]));
+		}
 	}
 
 	// Send log as authorized broadcast

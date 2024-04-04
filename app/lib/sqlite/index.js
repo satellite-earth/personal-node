@@ -3,19 +3,12 @@ import Sqlite3 from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-// TODO: find a better way to import these modules
-import { SQLiteEventStore } from '../../../../core/dist/sqlite-event-store/index.js';
-
 import { NATIVE_BINDINGS_PATH } from '../../../env.js';
 
 const Util = {
 	// If filter key is indexable
 	indexable: (key) => {
 		return key[0] === '#' && key.length === 2;
-	},
-
-	pmap: (_p) => {
-		return `(${_p.map(() => `?`).join(', ')})`;
 	},
 
 	// Filter keys mapped to event
@@ -68,9 +61,6 @@ class Database extends EventEmitter {
 
 		this.sub = {};
 
-		this.eventStore = new SQLiteEventStore(this.db);
-		this.eventStore.setup();
-
 		if (config.wal !== false) {
 			this.db.pragma('journal_mode = WAL');
 		}
@@ -86,103 +76,6 @@ class Database extends EventEmitter {
 
 		// 	}, config.reportInterval);
 		// }
-	}
-
-	addEvent(event, options) {
-		const inserted = this.eventStore.addEvent(event, options);
-
-		// TODO: update to just return boolean
-		return inserted ? event : null;
-	}
-
-	removeEvent(params) {
-		if (params.id) return this.eventStore.removeEvent(params.id);
-	}
-
-	addSubscription(subid, filters) {
-		this.sub[subid] = filters.map((filter) => {
-			const match = {};
-
-			for (let key of Object.keys(filter)) {
-				if (Util.filterMap[key]) {
-					match[key] = new Set(filter[key]);
-				} else if (Util.indexable(key)) {
-					match[key.slice(1)] = new Set(filter[key]);
-				}
-			}
-
-			return match;
-		});
-	}
-
-	removeSubscription(subid) {
-		delete this.sub[subid];
-	}
-
-	queryEvents(filters) {
-		return this.eventStore.getEventsForFilters(filters);
-	}
-
-	matchSubscriptions(event) {
-		const matched = [];
-		const indexed = {};
-
-		for (let tag of event.tags) {
-			if (tag[0].length !== 1) {
-				continue;
-			}
-
-			if (!indexed[tag[0]]) {
-				indexed[tag[0]] = [];
-			}
-
-			indexed[tag[0]].push(tag[1]);
-		}
-
-		const match = (filter) => {
-			for (let key of Object.keys(filter)) {
-				if (Util.filterMap[key]) {
-					// Authors, kinds, ids
-
-					if (!filter[key].has(event[Util.filterMap[key]])) {
-						return false;
-					}
-				} else if (indexed[key]) {
-					// Single letter tags
-
-					if (!indexed[key].some((item) => filter[key].has(item))) {
-						return false;
-					}
-				} else if (key === 'since') {
-					// Since
-
-					if (event.created_at < filter.since) {
-						return false;
-					}
-				} else if (key === 'until') {
-					// Until
-
-					if (event.created_at >= filter.until) {
-						return false;
-					}
-				} else {
-					return false;
-				}
-			}
-
-			return true;
-		};
-
-		for (let subid of Object.keys(this.sub)) {
-			for (let filter of this.sub[subid]) {
-				if (match(filter)) {
-					matched.push(subid);
-					break;
-				}
-			}
-		}
-
-		return matched;
 	}
 
 	// Delete all records in the database
