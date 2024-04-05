@@ -2,10 +2,11 @@
 	"name": "node",
 	"version": "0.0.1",
 	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
-	"main": "index.js",
+	"main": "dist/index.js",
 	"type": "module",
 	"scripts": {
-		"dev": "node index.js",
+		"dev": "node dist/index.js",
+		"build": "tsc",
 		"rebuild": "./node_modules/.bin/electron-rebuild --version 28.2.0",
 		"format": "prettier -w ."
 	},
@@ -18,7 +19,7 @@
 	},
 	"license": "MIT",
 	"dependencies": {
-		"better-sqlite3": "^9.3.0",
+		"better-sqlite3": "^9.4.5",
 		"blossom-server-sdk": "^0.2.3",
 		"cors": "^2.8.5",
 		"dotenv": "^16.3.1",
@@ -29,7 +30,11 @@
 		"ws": "^8.16.0"
 	},
 	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.9",
+		"@types/node": "^20.12.3",
+		"@types/ws": "^8.5.10",
 		"electron-rebuild": "^3.2.9",
-		"prettier": "^3.2.5"
+		"prettier": "^3.2.5",
+		"typescript": "^5.4.3"
 	}
 }

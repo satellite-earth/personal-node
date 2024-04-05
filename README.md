@@ -1,4 +1,4 @@
-# Satellte Node
+# Private Satellte Node
 
 satellite-node is like a "nostr full node"
 

@@ -5,11 +5,13 @@ import path from 'path';
 
 import {
 	DesktopBlobServer,
+	NostrRelay,
 	terminateConnectionsInterval,
-} from '../core/dist/index.js';
+} from '../../core/dist/index.js';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, HTTP_PORT } from './env.js';
 import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';
+import { LabeledEventStore } from './modules/labeled-event-store.js';
 
 // Needed for nostr-tools relay lib
 global.WebSocket = WebSocket;
@@ -27,8 +29,14 @@ const app = new App({
 	auth: AUTH,
 });
 
-app.relay.attachToServer(wss);
 app.control.attachToServer(wss);
+
+// create default relay
+const defaultEventStore = new LabeledEventStore(app.database.db, 'default');
+defaultEventStore.setup();
+defaultEventStore.readAll = true;
+const relay = new NostrRelay(defaultEventStore);
+relay.attachToServer(wss);
 
 const blobMetadata = new BlossomSQLite(app.database.db);
 
@@ -47,6 +55,7 @@ wss.on('headers', (headers, request) => {
 process.on('SIGINT', () => {
 	console.log('instance got SIGINT');
 	app.stop();
+	relay.stop();
 	process.exit(0);
 });
 

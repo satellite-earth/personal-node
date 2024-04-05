@@ -1,26 +1,17 @@
 import EventEmitter from 'events';
-import Sqlite3 from 'better-sqlite3';
+import Database, { type Database as SQLDatabase } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 import { NATIVE_BINDINGS_PATH } from '../../../env.js';
 
-const Util = {
-	// If filter key is indexable
-	indexable: (key) => {
-		return key[0] === '#' && key.length === 2;
-	},
+export default class LocalDatabase extends EventEmitter {
+	config: any;
+	path: { main: string; shm: string; wal: string };
 
-	// Filter keys mapped to event
-	filterMap: {
-		ids: 'id',
-		kinds: 'kind',
-		authors: 'pubkey',
-	},
-};
+	db: SQLDatabase;
 
-class Database extends EventEmitter {
-	constructor(config = {}) {
+	constructor(config: any = {}) {
 		super();
 
 		this.config = {
@@ -36,7 +27,7 @@ class Database extends EventEmitter {
 		};
 
 		// Detect architecture to pass the correct native sqlite module
-		this.db = new Sqlite3(this.path.main, {
+		this.db = new Database(this.path.main, {
 			// TODO these binaries should not be stored in this package,
 			// they need to be moved to the electron app instead, and
 			// the electron app needs to pass down the path to a folder
@@ -58,8 +49,6 @@ class Database extends EventEmitter {
 			// 	`bin/${process.arch === 'arm64' ? 'arm64' : 'x86'}/better_sqlite3.node`
 			// )
 		});
-
-		this.sub = {};
 
 		if (config.wal !== false) {
 			this.db.pragma('journal_mode = WAL');
@@ -90,7 +79,7 @@ class Database extends EventEmitter {
 	count() {
 		const result = this.db
 			.prepare(`SELECT COUNT(*) AS events FROM events`)
-			.get();
+			.get() as { events: number };
 
 		return result.events;
 	}
@@ -116,5 +105,3 @@ class Database extends EventEmitter {
 		this.removeAllListeners();
 	}
 }
-
-export default Database;

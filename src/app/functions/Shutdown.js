@@ -7,7 +7,5 @@ export default function Shutdown(app) {
 
 	app.database.stop();
 
-	app.relay.stop();
-
 	//process.exit(0);
 }

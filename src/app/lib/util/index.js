@@ -107,9 +107,9 @@ const CompressZSTD = (params) => {
 		// Detect architecture to pass the correct native zstd module
 		const cs = ps
 			.spawn(
-				path.join(
+				path.resolve(
 					__dirname,
-					`bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`,
+					`../../../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`,
 				),
 				[`-${typeof params.level === 'undefined' ? 7 : params.level}`],
 			)

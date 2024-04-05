@@ -235,7 +235,11 @@ class Control {
 		process.send(message);
 	}
 
-	handleConnect(ws, req) {}
+	handleConnect(ws, req) {
+		ws.on('message', (data, isBinary) => {
+			this.handleMessage(data, ws);
+		});
+	}
 	handleDisconnect(ws) {
 		this.authorizedConnections.delete(ws);
 	}
@@ -270,10 +274,6 @@ class Control {
 	attachToServer(wss) {
 		wss.on('connection', (ws, req) => {
 			this.handleConnect(ws, req);
-
-			ws.on('message', (data, isBinary) => {
-				this.handleMessage(data, ws);
-			});
 			ws.on('close', () => this.handleDisconnect(ws));
 		});
 	}
