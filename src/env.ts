@@ -5,7 +5,7 @@
 
 import { randomBytes } from 'crypto';
 
-const NATIVE_BINDINGS_PATH = process.env.NATIVE_BINDINGS_PATH;
+const USE_PREBUILT_SQLITE_BINDINGS = typeof process.env.USE_PREBUILT_SQLITE_BINDINGS !== 'undefined';
 const DATA_PATH = process.env.DATA_PATH || './data';
 const PORT = parseInt(process.env.PORT ?? '') || 2012;
 const HTTP_PORT = parseInt(process.env.HTTP_PORT ?? '') || 2011;
@@ -13,4 +13,4 @@ const HTTP_PORT = parseInt(process.env.HTTP_PORT ?? '') || 2011;
 // get AUTH token or generate a random open at startup
 const AUTH = process.env.AUTH || randomBytes(16).toString('hex');
 
-export { NATIVE_BINDINGS_PATH, DATA_PATH, PORT, HTTP_PORT, AUTH };
+export { USE_PREBUILT_SQLITE_BINDINGS, DATA_PATH, PORT, HTTP_PORT, AUTH };

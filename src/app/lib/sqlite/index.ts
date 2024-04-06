@@ -1,9 +1,12 @@
 import EventEmitter from 'events';
 import Database, { type Database as SQLDatabase } from 'better-sqlite3';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 
-import { NATIVE_BINDINGS_PATH } from '../../../env.js';
+import { USE_PREBUILT_SQLITE_BINDINGS } from '../../../env.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default class LocalDatabase extends EventEmitter {
 	config: any;
@@ -37,9 +40,9 @@ export default class LocalDatabase extends EventEmitter {
 			// /x86/better_sqlite3.node
 
 			// Optionally use native bindings indicated by environment
-			nativeBinding: NATIVE_BINDINGS_PATH
+			nativeBinding: USE_PREBUILT_SQLITE_BINDINGS
 				? path.join(
-						NATIVE_BINDINGS_PATH,
+						path.join(__dirname, '../../../../lib/bin'),
 						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`,
 					)
 				: undefined,
