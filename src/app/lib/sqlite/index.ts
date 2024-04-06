@@ -31,14 +31,6 @@ export default class LocalDatabase extends EventEmitter {
 
 		// Detect architecture to pass the correct native sqlite module
 		this.db = new Database(this.path.main, {
-			// TODO these binaries should not be stored in this package,
-			// they need to be moved to the electron app instead, and
-			// the electron app needs to pass down the path to a folder
-			// that contains a structure like
-
-			// /arm64/better_sqlite3.node
-			// /x86/better_sqlite3.node
-
 			// Optionally use native bindings indicated by environment
 			nativeBinding: USE_PREBUILT_SQLITE_BINDINGS
 				? path.join(
@@ -46,28 +38,11 @@ export default class LocalDatabase extends EventEmitter {
 						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`,
 					)
 				: undefined,
-
-			// nativeBinding: path.join(
-			// 	__dirname,
-			// 	`bin/${process.arch === 'arm64' ? 'arm64' : 'x86'}/better_sqlite3.node`
-			// )
 		});
 
 		if (config.wal !== false) {
 			this.db.pragma('journal_mode = WAL');
 		}
-
-		// if (config.reportInterval) {
-
-		// 	this._status = setInterval(() => {
-
-		// 		this.emit('status', {
-		// 			size: this.size(),
-		// 			count: this.count()
-		// 		});
-
-		// 	}, config.reportInterval);
-		// }
 	}
 
 	// Delete all records in the database
