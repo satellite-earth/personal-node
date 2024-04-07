@@ -31,13 +31,19 @@ const app = new App({
 
 app.control.attachToServer(wss);
 
-const communityMultiplexer = new CommunityMultiplexer(app.database.db);
-
 // create default relay
 const defaultEventStore = new LabeledEventStore(app.database.db, 'default');
 defaultEventStore.setup();
 defaultEventStore.readAll = true;
+
+const communityMultiplexer = new CommunityMultiplexer(app.database.db, defaultEventStore);
+
 const relay = new NostrRelay(defaultEventStore);
+
+// Fix CORS for websocket
+wss.on('headers', (headers, request) => {
+	headers.push('Access-Control-Allow-Origin: *');
+});
 
 wss.on('connection', async (ws, req) => {
 	if (req.url === '/') return relay.handleConnection(ws, req);
@@ -57,11 +63,6 @@ const blobStorage = new LocalStorage(path.join(app.config.path, 'blobs'));
 await blobStorage.setup();
 
 const blobServer = new DesktopBlobServer(blobStorage, blobMetadata);
-
-// Fix CORS for websocket
-wss.on('headers', (headers, request) => {
-	headers.push('Access-Control-Allow-Origin: *');
-});
 
 // Allow parent (if any) to tell the node to shut itself
 // down gracefully instead of just killing the process

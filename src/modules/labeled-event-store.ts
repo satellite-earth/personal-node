@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { Filter, NostrEvent } from 'nostr-tools';
 import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
+import { logger } from '../logger.js';
 
 export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 	label: string;
@@ -9,6 +10,8 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 	constructor(db: Database, label: string) {
 		super(db);
 		this.label = label;
+
+		this.log = logger.extend(`event-store:` + label);
 	}
 
 	async setup() {
