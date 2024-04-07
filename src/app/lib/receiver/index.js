@@ -234,9 +234,7 @@ class Receiver extends EventEmitter {
 					}
 
 					if (d) {
-						parameterizedReplaceableRefs.add(
-							`${event.kind}:${event.pubkey}:${d}`,
-						);
+						parameterizedReplaceableRefs.add(`${event.kind}:${event.pubkey}:${d}`);
 					}
 				}
 			}
@@ -261,17 +259,13 @@ class Receiver extends EventEmitter {
 				if (this.listening) {
 					this.remote[relay.url].reconnecting = setTimeout(() => {
 						console.log(
-							relay.url +
-								' attmepting reconnect after ' +
-								this.remote[relay.url].reconnectDelay +
-								' millsecs',
+							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs',
 						);
 
 						relay.connect();
 					}, this.remote[relay.url].reconnectDelay);
 
-					this.remote[relay.url].reconnectDelay =
-						this.remote[relay.url].reconnectDelay * 2;
+					this.remote[relay.url].reconnectDelay = this.remote[relay.url].reconnectDelay * 2;
 				}
 			}
 		};
@@ -318,9 +312,7 @@ class Receiver extends EventEmitter {
 				// Primary reference
 				relay.subscribe(primaryReferenceFilters, {
 					oneose: () => {
-						console.log(
-							relay.url + ' primary reference got eose . . . reached the end',
-						);
+						console.log(relay.url + ' primary reference got eose . . . reached the end');
 					},
 				});
 			};

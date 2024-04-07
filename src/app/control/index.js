@@ -101,8 +101,7 @@ class Control {
 	handleInserted({ pubkey, kind, content }) {
 		const profile = this.app.graph.getProfile(pubkey);
 
-		const name =
-			profile && profile.name ? profile.name : Util.formatPubkey(pubkey);
+		const name = profile && profile.name ? profile.name : Util.formatPubkey(pubkey);
 
 		let preview;
 
@@ -112,8 +111,7 @@ class Control {
 		}
 
 		this.log({
-			text:
-				`[EVENT] KIND ${kind} FROM ${name}` + (preview ? ` "${preview}"` : ''),
+			text: `[EVENT] KIND ${kind} FROM ${name}` + (preview ? ` "${preview}"` : ''),
 		});
 
 		if (this._databaseStatusPending) {
@@ -196,10 +194,7 @@ class Control {
 			},
 		});
 
-		if (
-			(!currentlyConnected && status === 'connected') ||
-			(status !== 'connected' && currentlyConnected)
-		) {
+		if ((!currentlyConnected && status === 'connected') || (status !== 'connected' && currentlyConnected)) {
 			this.log({
 				text: `[STATUS] REMOTE ${status.toUpperCase()} ${relay.url}`,
 			});
@@ -235,10 +230,12 @@ class Control {
 		process.send(message);
 	}
 
-	handleConnect(ws, req) {
+	handleConnection(ws, req) {
 		ws.on('message', (data, isBinary) => {
 			this.handleMessage(data, ws);
 		});
+
+		ws.on('close', () => this.handleDisconnect(ws));
 	}
 	handleDisconnect(ws) {
 		this.authorizedConnections.delete(ws);
@@ -272,10 +269,7 @@ class Control {
 	}
 
 	attachToServer(wss) {
-		wss.on('connection', (ws, req) => {
-			this.handleConnect(ws, req);
-			ws.on('close', () => this.handleDisconnect(ws));
-		});
+		wss.on('connection', this.handleConnection.bind(this));
 	}
 
 	// Broadcast control status to authorized clients

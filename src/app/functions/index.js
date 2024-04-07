@@ -5,11 +5,4 @@ import Startup from './Startup.js';
 import StopReceiver from './StopReceiver.js';
 import Shutdown from './Shutdown.js';
 
-export {
-	ClearDatabase,
-	ExportDatabase,
-	StartReceiver,
-	Startup,
-	StopReceiver,
-	Shutdown,
-};
+export { ClearDatabase, ExportDatabase, StartReceiver, Startup, StopReceiver, Shutdown };

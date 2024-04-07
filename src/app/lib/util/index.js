@@ -37,12 +37,8 @@ const saveJson = (data, params) => {
 
 const writeJsonl = (jsonArray, params) => {
 	return new Promise((resolve, reject) => {
-		const filename = params.compress
-			? `${params.outputName}.temp.jsonl`
-			: `${params.outputName}.jsonl`;
-		const writableStream = fs.createWriteStream(
-			path.join(params.outputPath, filename),
-		);
+		const filename = params.compress ? `${params.outputName}.temp.jsonl` : `${params.outputName}.jsonl`;
+		const writableStream = fs.createWriteStream(path.join(params.outputPath, filename));
 
 		const transform = new Transform({
 			transform: (json, encoding, callback) => {
@@ -64,10 +60,7 @@ const writeJsonl = (jsonArray, params) => {
 			console.log('got finish');
 
 			if (params.compress) {
-				const outputPath = path.join(
-					params.outputPath,
-					`${params.outputName}.jsonl.zst`,
-				);
+				const outputPath = path.join(params.outputPath, `${params.outputName}.jsonl.zst`);
 				const inputPath = path.join(params.outputPath, filename);
 
 				try {
@@ -106,13 +99,9 @@ const CompressZSTD = (params) => {
 
 		// Detect architecture to pass the correct native zstd module
 		const cs = ps
-			.spawn(
-				path.resolve(
-					__dirname,
-					`../../../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`,
-				),
-				[`-${typeof params.level === 'undefined' ? 7 : params.level}`],
-			)
+			.spawn(path.resolve(__dirname, `../../../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`), [
+				`-${typeof params.level === 'undefined' ? 7 : params.level}`,
+			])
 			.on('exit', (code, signal) => {
 				console.log('exit', code, signal);
 

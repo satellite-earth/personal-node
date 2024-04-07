@@ -55,9 +55,7 @@ export default class LocalDatabase extends EventEmitter {
 
 	// Get number of events in the database
 	count() {
-		const result = this.db
-			.prepare(`SELECT COUNT(*) AS events FROM events`)
-			.get() as { events: number };
+		const result = this.db.prepare(`SELECT COUNT(*) AS events FROM events`).get() as { events: number };
 
 		return result.events;
 	}

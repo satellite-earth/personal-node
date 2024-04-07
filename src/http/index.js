@@ -4,8 +4,6 @@ import Cors from 'cors';
 import router from './routes.js';
 
 export default function createExpressServer(app) {
-	//const port = process.env.HTTP_PORT || 2011;
-
 	const server = express();
 
 	server.use(Cors());

@@ -26,16 +26,8 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 			)
 			.run();
 
-		this.db
-			.prepare(
-				'CREATE INDEX IF NOT EXISTS event_labels_label ON event_labels(label)',
-			)
-			.run();
-		this.db
-			.prepare(
-				'CREATE INDEX IF NOT EXISTS event_labels_event ON event_labels(event)',
-			)
-			.run();
+		this.db.prepare('CREATE INDEX IF NOT EXISTS event_labels_label ON event_labels(label)').run();
+		this.db.prepare('CREATE INDEX IF NOT EXISTS event_labels_event ON event_labels(event)').run();
 	}
 
 	protected buildSQLQueryForFilter(filter: Filter) {
@@ -51,20 +43,16 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 	addEvent(event: NostrEvent) {
 		const inserted = super.addEvent(event);
 
-		if (inserted)
-			this.db
-				.prepare(`INSERT INTO event_labels (event, label) VALUES (?, ?)`)
-				.run(event.id, this.label);
+		const hasLabel = !!this.db
+			.prepare('SELECT * FROM event_labels WHERE event = ? AND label = ?')
+			.get(event.id, this.label);
+		if (!hasLabel) this.db.prepare(`INSERT INTO event_labels (event, label) VALUES (?, ?)`).run(event.id, this.label);
 
 		return inserted;
 	}
 
 	removeEvent(id: string) {
-		const removed = super.removeEvent(id);
-
-		if (removed)
-			this.db.prepare(`DELETE * FROM event_labels WHERE event=?`).run(id);
-
-		return removed;
+		this.db.prepare(`DELETE * FROM event_labels WHERE event = ?`).run(id);
+		return super.removeEvent(id);
 	}
 }
