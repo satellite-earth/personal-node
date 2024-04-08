@@ -3,6 +3,10 @@ import { Filter, NostrEvent } from 'nostr-tools';
 import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
 import { logger } from '../logger.js';
 
+export function mapParams(params: any[]) {
+	return `(${params.map(() => `?`).join(', ')})`;
+}
+
 export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 	label: string;
 	readAll = false;
@@ -22,7 +26,7 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 				`
 				CREATE TABLE IF NOT EXISTS event_labels (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					event TEXT(64) UNIQUE REFERENCES events(id),
+					event TEXT(64) REFERENCES events(id),
 					label TEXT
 				)
 			`,
@@ -43,8 +47,14 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 			});
 	}
 
-	addEvent(event: NostrEvent) {
-		const inserted = super.addEvent(event);
+	addEvent(
+		event: NostrEvent,
+		options?: {
+			preserveEphemeral?: boolean;
+			preserveReplaceable?: boolean;
+		},
+	) {
+		const inserted = super.addEvent(event, options);
 
 		const hasLabel = !!this.db
 			.prepare('SELECT * FROM event_labels WHERE event = ? AND label = ?')
@@ -54,8 +64,13 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 		return inserted;
 	}
 
+	removeEvents(ids: string[]) {
+		this.db.prepare(`DELETE FROM event_labels WHERE event IN ${mapParams(ids)}`).run(...ids);
+		return super.removeEvents(ids);
+	}
+
 	removeEvent(id: string) {
-		this.db.prepare(`DELETE * FROM event_labels WHERE event = ?`).run(id);
+		this.db.prepare(`DELETE FROM event_labels WHERE event = ?`).run(id);
 		return super.removeEvent(id);
 	}
 }
