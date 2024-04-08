@@ -4,15 +4,8 @@ import Database from './lib/sqlite/index.js';
 import Graph from './lib/graph/index.js';
 import Receiver from './lib/receiver/index.js';
 
-import * as Functions from './functions/index.js';
 import Control from './control/index.js';
-import { SQLiteEventStore, NostrRelay } from '../../../core/dist/index.js';
-
-// KEEP WORKING . . . create an "app" sub dir and move
-// the logic there . . . you should be able to create
-// an instance of the app. Once that is working and has
-// not broken anything, try to build the multiinstance
-// thing
+import { SQLiteEventStore } from '../../../core/dist/index.js';
 
 class App {
 	constructor(config = {}) {
@@ -68,12 +61,20 @@ class App {
 	}
 
 	start() {
-		// Load metadata in from the db into the social graph
-		Functions.Startup(this);
+		const events = this.eventStore.getEventsForFilters([{ kinds: [0, 3] }]);
+
+		for (let event of events) {
+			this.graph.add(event);
+		}
+
+		// Set initial stats for the database
+		this.control.updateDatabaseStatus();
 	}
 
 	stop() {
-		Functions.Shutdown(this);
+		this.database.stop();
+		this.receiver.stop();
+		this.control.stop();
 	}
 }
 

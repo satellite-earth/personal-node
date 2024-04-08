@@ -3,6 +3,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import express from 'express';
 import path from 'path';
 import { createServer } from 'http';
+import { useWebSocketImplementation } from 'nostr-tools';
 
 import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '../../core/dist/index.js';
 import App from './app/index.js';
@@ -11,7 +12,6 @@ import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';
 import { LabeledEventStore } from './modules/labeled-event-store.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
-import { useWebSocketImplementation } from 'nostr-tools';
 
 // Needed for nostr-tools relay lib
 global.WebSocket = WebSocket;

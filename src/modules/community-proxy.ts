@@ -75,7 +75,9 @@ export class CommunityProxy {
 		if (this.upstream) return;
 		await this.connectUpstream();
 
-		this.syncMetadata();
+		setTimeout(() => {
+			this.syncMetadata();
+		}, 100);
 	}
 
 	syncMetadata() {

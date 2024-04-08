@@ -1,4 +1,4 @@
-import {type Database} from 'better-sqlite3'
+import { type Database } from 'better-sqlite3';
 import { WebSocket, WebSocketServer } from 'ws';
 import { type IncomingMessage } from 'http';
 import { randomBytes } from 'crypto';
@@ -11,7 +11,7 @@ import { SQLiteEventStore } from '../../../core/dist/index.js';
 
 export class CommunityMultiplexer {
 	log = logger.extend('community-multiplexer');
-	db: Database
+	db: Database;
 	eventStore: SQLiteEventStore;
 	pool: SimplePool;
 	connectionManager: HyperConnectionManager;
@@ -19,25 +19,20 @@ export class CommunityMultiplexer {
 	communities = new Map<string, CommunityProxy>();
 
 	constructor(db: Database, eventStore: SQLiteEventStore) {
-		this.db = db
+		this.db = db;
 		this.eventStore = eventStore;
 		this.pool = new SimplePool();
 
 		this.connectionManager = new HyperConnectionManager(randomBytes(32).toString('hex'));
-	}
 
-	stop() {
-		for (const [pubkey, community] of this.communities) {
-			community.stop();
-		}
-		this.connectionManager.stop();
+		this.syncCommunityDefinitions();
 	}
 
 	attachToServer(wss: WebSocketServer) {
 		wss.on('connection', this.handleConnection.bind(this));
 	}
 
-	async handleConnection(ws: WebSocket, req: IncomingMessage) {
+	handleConnection(ws: WebSocket, req: IncomingMessage) {
 		if (!req.url) return false;
 
 		const url = new URL(req.url, `http://${req.headers.host}`);
@@ -46,37 +41,48 @@ export class CommunityMultiplexer {
 
 		try {
 			let community = this.communities.get(pubkey);
-			if (!community) community = await this.connectToCommunity(pubkey);
+			if (!community) community = this.getCommunityProxy(pubkey);
 
 			// connect the socket to the relay
 			community.relay.handleConnection(ws, req);
 			return true;
 		} catch (error) {
-			this.log('Failed to connect to', pubkey);
+			this.log('Failed handle ws connection to', pubkey);
 			console.log(error);
 			return false;
 		}
 	}
 
-	async connectToCommunity(pubkey: string) {
+	syncCommunityDefinitions() {
+		this.log('Syncing community definitions');
+		const sub = this.pool.subscribeMany(['wss://nostrue.com'], [{ kinds: [12012] }], {
+			onevent: (event) => this.eventStore.addEvent(event),
+			oneose: () => sub.close(),
+		});
+	}
+
+	getCommunityProxy(pubkey: string) {
 		this.log('Looking for community definition', pubkey);
 		let definition: NostrEvent | undefined = undefined;
 
 		const local = this.eventStore.getEventsForFilters([{ kinds: [12012], authors: [pubkey] }]);
 		if (local[0]) definition = local[0];
 
-		if (!definition) {
-			definition = (await this.pool.get(['wss://nostrue.com'], { kinds: [12012], authors: [pubkey] })) ?? undefined;
-		}
-
 		if (!definition) throw new Error('Failed to find community definition');
 
-		this.log('Connecting to community', pubkey);
+		this.log('Creating community proxy', pubkey);
 		const community = new CommunityProxy(this.db, definition, this.connectionManager);
-		await community.connect();
 
+		community.connect();
 		this.communities.set(pubkey, community);
 
 		return community;
+	}
+
+	stop() {
+		for (const [pubkey, community] of this.communities) {
+			community.stop();
+		}
+		this.connectionManager.stop();
 	}
 }
