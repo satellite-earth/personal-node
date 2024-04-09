@@ -1,24 +1,62 @@
 import crypto from 'crypto';
-import * as Util from '../lib/util/index.js';
+import { NostrEvent } from 'nostr-tools';
+import { IncomingMessage } from 'http';
+import { WebSocket, WebSocketServer } from 'ws';
 
-import API from './API.js';
 import { PORT } from '../../env.js';
+import * as Util from '../lib/util/index.js';
+import API from './API.js';
+import type App from '../index.js';
+import { type Relay } from '../lib/receiver/relay.js';
+
+export type ControlOptions = {
+	configPath: string;
+	controlAuth?: (auth: string) => boolean;
+};
+
+export type ControlConfig = {
+	cacheLevel: 1 | 2 | 3;
+	relayPort: number;
+	autoListen: boolean;
+	logsEnabled: boolean;
+	pubkeys: string[];
+	relays: { url: string }[];
+};
+
+export type ControlStatus = {
+	listening: boolean;
+	relaysConnected: Record<string, boolean>;
+	dbCount: number;
+	dbSize: number;
+};
 
 class Control {
-	constructor(app, options) {
+	app: App;
+
+	options: ControlOptions;
+	config: ControlConfig;
+
+	authorizedConnections = new Set<WebSocket>();
+
+	status: ControlStatus = {
+		listening: false,
+		relaysConnected: {},
+		dbCount: 0,
+		dbSize: 0,
+	};
+
+	api: Record<string, (data: any) => void>;
+
+	_databaseStatusUpdated = 0;
+	_databaseStatusPending = false;
+	_databaseStatusTimeout?: NodeJS.Timeout;
+	_reconnectReceiverPending = false;
+	_reconnectReceiver?: NodeJS.Timeout;
+
+	constructor(app: App, options: ControlOptions) {
 		this.app = app;
 
 		this.options = options;
-
-		this.authorizedConnections = new Set();
-
-		// Init status default values
-		this.status = {
-			listening: false,
-			relaysConnected: {},
-			dbCount: 0,
-			dbSize: 0,
-		};
 
 		// Load initial config from disk
 		this.config = {
@@ -34,11 +72,9 @@ class Control {
 		// Actions may be called locally and also
 		// by proxy through a control connection
 		this.api = API(this);
-
-		this._databaseStatusUpdated = 0;
 	}
 
-	action(type, data) {
+	action(type: string, data: any) {
 		if (!this.api[type]) return;
 
 		let result;
@@ -53,10 +89,8 @@ class Control {
 
 	// Set config file state, save to disk,
 	// and forward to change to controllers
-	setConfig(data) {
-		if (!data) {
-			return;
-		}
+	setConfig(data?: Partial<ControlConfig>) {
+		if (!data) return;
 
 		this.config = {
 			...this.config,
@@ -75,6 +109,7 @@ class Control {
 		this.log({
 			text: `[CONFIG] ${Object.keys(data)
 				.map((key) => {
+					// @ts-expect-error
 					return `${key} = ${JSON.stringify(data[key])}`.toUpperCase();
 				})
 				.join(' | ')}`,
@@ -82,10 +117,8 @@ class Control {
 	}
 
 	// Set status flags and forward
-	setStatus(data) {
-		if (!data) {
-			return;
-		}
+	setStatus(data?: Partial<ControlStatus>) {
+		if (!data) return;
 
 		this.status = {
 			...this.status,
@@ -98,7 +131,7 @@ class Control {
 		});
 	}
 
-	handleInserted({ pubkey, kind, content }) {
+	handleInserted({ pubkey, kind, content }: NostrEvent) {
 		const profile = this.app.graph.getProfile(pubkey);
 
 		const name = profile && profile.name ? profile.name : Util.formatPubkey(pubkey);
@@ -114,9 +147,7 @@ class Control {
 			text: `[EVENT] KIND ${kind} FROM ${name}` + (preview ? ` "${preview}"` : ''),
 		});
 
-		if (this._databaseStatusPending) {
-			return;
-		}
+		if (this._databaseStatusPending) return;
 
 		const statusDelta = this._databaseStatusUpdated + 1000 - Date.now();
 
@@ -153,10 +184,8 @@ class Control {
 		});
 	}
 
-	handleRelayStatus({ status, relay }) {
-		if (!relay) {
-			return;
-		}
+	handleRelayStatus({ status, relay }: { status: 'connected' | 'disconnected'; relay: Relay }) {
+		if (!relay) return;
 
 		// When remote connected status changes to disconnected,
 		// stop listening and reconnect only the persistent data
@@ -222,7 +251,7 @@ class Control {
 		}
 	}
 
-	sendToParentProcess(message) {
+	sendToParentProcess(message: any) {
 		if (typeof process.send !== 'function') {
 			return;
 		}
@@ -230,17 +259,17 @@ class Control {
 		process.send(message);
 	}
 
-	handleConnection(ws, req) {
+	handleConnection(ws: WebSocket, req: IncomingMessage) {
 		ws.on('message', (data, isBinary) => {
-			this.handleMessage(data, ws);
+			this.handleMessage(data as Buffer, ws);
 		});
 
 		ws.on('close', () => this.handleDisconnect(ws));
 	}
-	handleDisconnect(ws) {
+	handleDisconnect(ws: WebSocket) {
 		this.authorizedConnections.delete(ws);
 	}
-	handleMessage(buffer, ws) {
+	handleMessage(buffer: Buffer, ws: WebSocket) {
 		try {
 			const data = JSON.parse(buffer.toString());
 
@@ -251,12 +280,12 @@ class Control {
 			console.log(err);
 		}
 	}
-	handleControlMessage(message, ws) {
+	handleControlMessage(message: string[], ws: WebSocket) {
 		// Maybe authorize connection - maintain a flag or most recent
 		// auth status on each websocket so that config updates can
 		// be forwarded to multiple simultaneous control connections.
 		// Send client a notice when its auth state changes.
-		if (this.options.controlAuth && this.options.controlAuth(message[1])) {
+		if (this.options.controlAuth?.(message[1])) {
 			this.authorizedConnections.add(ws);
 		} else {
 			this.authorizedConnections.delete(ws);
@@ -268,19 +297,19 @@ class Control {
 		this.action(message[2], message[3]);
 	}
 
-	attachToServer(wss) {
+	attachToServer(wss: WebSocketServer) {
 		wss.on('connection', this.handleConnection.bind(this));
 	}
 
 	// Broadcast control status to authorized clients
-	broadcast(payload) {
+	broadcast(payload: any) {
 		for (const ws of this.authorizedConnections) {
 			ws.send(JSON.stringify(['CONTROL', payload]));
 		}
 	}
 
 	// Send log as authorized broadcast
-	log(data) {
+	log(data: any) {
 		if (this.config.logsEnabled) {
 			this.broadcast({
 				type: 'logs/remote',

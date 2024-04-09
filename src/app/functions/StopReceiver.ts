@@ -1,4 +1,6 @@
-export default function StopReceiver(app, data) {
+import type App from '../index.js';
+
+export default function StopReceiver(app: App) {
 	// Unlisten if listening
 	if (app.control.status.listening) {
 		const status = { listening: false };

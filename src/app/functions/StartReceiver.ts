@@ -1,4 +1,6 @@
-export default function StartReceiver(app, data) {
+import type App from '../index.js';
+
+export default function StartReceiver(app: App) {
 	// Listen if not already
 	if (!app.control.status.listening) {
 		const status = { listening: true };

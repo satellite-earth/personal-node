@@ -5,10 +5,22 @@ import Graph from './lib/graph/index.js';
 import Receiver from './lib/receiver/index.js';
 
 import Control from './control/index.js';
-import { SQLiteEventStore } from '../../../core/dist/index.js';
+import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
+
+type AppConfig = {
+	path: string;
+	auth: string;
+};
 
 class App {
-	constructor(config = {}) {
+	config: AppConfig;
+	database: Database;
+	eventStore: IEventStore;
+	graph: Graph;
+	receiver: Receiver;
+	control: Control;
+
+	constructor(config: AppConfig) {
 		this.config = config;
 
 		console.log('app config', this.config);
@@ -41,7 +53,8 @@ class App {
 
 		// Handle database status reports
 		this.database.on('status', (data) => {
-			this.control.handleDatabaseStatus(data);
+			// NOTE: this is missing for some reason, Im not sure what it dose
+			// this.control.handleDatabaseStatus(data);
 		});
 
 		// Handle relay status reports

@@ -9,11 +9,10 @@ import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '../
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH } from './env.js';
 import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';
-import { LabeledEventStore } from './modules/labeled-event-store.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
-// Needed for nostr-tools relay lib
+// @ts-expect-error
 global.WebSocket = WebSocket;
 
 useWebSocketImplementation(WebSocket);
@@ -31,14 +30,9 @@ const app = new App({
 
 app.control.attachToServer(wss);
 
-// create default relay
-const defaultEventStore = new LabeledEventStore(app.database.db, 'default');
-defaultEventStore.setup();
-defaultEventStore.readAll = true;
+const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
-const communityMultiplexer = new CommunityMultiplexer(app.database.db, defaultEventStore);
-
-const relay = new NostrRelay(defaultEventStore);
+const relay = new NostrRelay(app.eventStore);
 
 // Fix CORS for websocket
 wss.on('headers', (headers, request) => {
@@ -79,6 +73,8 @@ const httpServer = express();
 server.on('request', httpServer);
 
 httpServer.use(blobServer.router);
+
+httpServer.use(express.static('../../dashboard-ui/dist'));
 
 app.start();
 

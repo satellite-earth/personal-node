@@ -7,18 +7,18 @@ import { NostrEvent, SimplePool } from 'nostr-tools';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
 import { logger } from '../logger.js';
 import { CommunityProxy } from './community-proxy.js';
-import { SQLiteEventStore } from '../../../core/dist/index.js';
+import { IEventStore } from '../../../core/dist/index.js';
 
 export class CommunityMultiplexer {
 	log = logger.extend('community-multiplexer');
 	db: Database;
-	eventStore: SQLiteEventStore;
+	eventStore: IEventStore;
 	pool: SimplePool;
 	connectionManager: HyperConnectionManager;
 
 	communities = new Map<string, CommunityProxy>();
 
-	constructor(db: Database, eventStore: SQLiteEventStore) {
+	constructor(db: Database, eventStore: IEventStore) {
 		this.db = db;
 		this.eventStore = eventStore;
 		this.pool = new SimplePool();

@@ -1,8 +1,10 @@
 import OS from 'os';
 
 import * as Functions from '../functions/index.js';
+import type Control from './index.js';
+import { ControlConfig } from './index.js';
 
-const API = (control) => {
+const API = (control: Control) => {
 	return {
 		CLEAR_DATABASE: () => {
 			Functions.ClearDatabase(control.app);
@@ -12,7 +14,7 @@ const API = (control) => {
 			});
 		},
 
-		EXPORT_DATABASE: async (params) => {
+		EXPORT_DATABASE: async () => {
 			let log;
 
 			try {
@@ -36,7 +38,7 @@ const API = (control) => {
 			control.log({ text: log });
 		},
 
-		SYNC: (data) => {
+		SYNC: () => {
 			// dispatch([{
 			// 	type: 'config/set',
 			// 	data: control.config
@@ -71,29 +73,29 @@ const API = (control) => {
 		},
 
 		// Set node config and return updated props
-		SET_CONFIG: (data) => {
+		SET_CONFIG: (data: Partial<ControlConfig>) => {
 			control.setConfig(data);
 		},
 
-		RECEIVER_CONFIG: (data) => {
+		RECEIVER_CONFIG: (data: Partial<ControlConfig>) => {
 			// Modify receiver config
 			control.setConfig(data);
 
 			// Restart the receiver is listening,
 			// restart it to reflect new config
 			if (control.status.listening) {
-				Functions.StopReceiver(control.app, data);
+				Functions.StopReceiver(control.app);
 
-				Functions.StartReceiver(control.app, data);
+				Functions.StartReceiver(control.app);
 			}
 		},
 
-		RECEIVER_LISTEN: async (data) => {
-			await Functions.StartReceiver(control.app, data);
+		RECEIVER_LISTEN: async () => {
+			await Functions.StartReceiver(control.app);
 		},
 
-		RECEIVER_UNLISTEN: (data) => {
-			Functions.StopReceiver(control.app, data);
+		RECEIVER_UNLISTEN: () => {
+			Functions.StopReceiver(control.app);
 		},
 	};
 };

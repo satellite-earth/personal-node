@@ -1,6 +1,8 @@
+import { Filter } from 'nostr-tools';
 import * as Util from '../lib/util/index.js';
+import type App from '../index.js';
 
-export default function ExportDatabase(app, params) {
+export default function ExportDatabase(app: App, params: { path: string; name: string; filters?: Filter[] }) {
 	const events = app.eventStore.getEventsForFilters(params.filters || [{}]);
 
 	return Util.writeJsonl(events, {

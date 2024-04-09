@@ -1,13 +1,14 @@
-class Graph {
-	constructor(database) {
-		// <pubkey>: { <created_at>, <set> }
-		this.contacts = {};
+import { NostrEvent } from 'nostr-tools';
 
-		// <pubkey>: { <created_at>, <profile> }
-		this.profile = {};
-	}
+type Profile = { name: string };
 
-	add(event) {
+export type Node = { p: string; z: number; n: number };
+
+export default class Graph {
+	profile: Record<string, { created_at: number; profile: Profile }> = {};
+	contacts: Record<string, { created_at: number; set: Set<string> }> = {};
+
+	add(event: NostrEvent) {
 		if (event.kind === 0) {
 			this.addProfile(event);
 		} else if (event.kind === 3) {
@@ -15,27 +16,21 @@ class Graph {
 		}
 	}
 
-	addContacts(event) {
+	addContacts(event: NostrEvent) {
 		const existing = this.contacts[event.pubkey];
 
 		// Add or overwrite an existing (older) contacts list
 		if (!existing || existing.created_at < event.created_at) {
+			const following = new Set(event.tags.filter((tag) => tag[0] === 'p').map((tag) => tag[1]));
+
 			this.contacts[event.pubkey] = {
 				created_at: event.created_at,
-				set: new Set(
-					event.tags
-						.filter((tag) => {
-							return tag[0] === 'p';
-						})
-						.map((tag) => {
-							return tag[1];
-						}),
-				),
+				set: following,
 			};
 		}
 	}
 
-	addProfile(event) {
+	addProfile(event: NostrEvent) {
 		const existing = this.profile[event.pubkey];
 
 		// Add or overwrite an existing (older) profile
@@ -61,15 +56,15 @@ class Graph {
 		}
 	}
 
-	getNodes(roots = []) {
-		const u = {};
+	getNodes(roots: string[] = []): Node[] {
+		const u: Record<string, { z: number; n: number }> = {};
 
 		// Init u with root pubkeys
 		for (let p of roots) {
 			u[p] = { z: 0, n: 1 };
 		}
 
-		const populate = (pubkeys, z) => {
+		const populate = (pubkeys: string[], z: number) => {
 			for (let p of pubkeys) {
 				// If pubkey's contacts don't exist, skip it
 				if (!this.contacts[p]) {
@@ -126,7 +121,7 @@ class Graph {
 			});
 	}
 
-	getProfile(pubkey) {
+	getProfile(pubkey: string) {
 		const record = this.profile[pubkey];
 
 		if (record) {
@@ -134,5 +129,3 @@ class Graph {
 		}
 	}
 }
-
-export default Graph;

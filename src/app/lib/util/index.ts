@@ -3,15 +3,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Transform } from 'stream';
 import { nip19 } from 'nostr-tools';
+
+// Missing types for process-streams
+// @ts-expect-error
 import ProcessStream from 'process-streams';
 
-const formatPubkey = (pubkey) => {
+const formatPubkey = (pubkey: string) => {
 	const npub = nip19.npubEncode(pubkey);
 
 	return `${npub.slice(0, 9)}...${npub.slice(-4)}`;
 };
 
-const loadJson = (params) => {
+const loadJson = (params: { path: string }) => {
 	let object;
 
 	try {
@@ -27,7 +30,7 @@ const loadJson = (params) => {
 	}
 };
 
-const saveJson = (data, params) => {
+const saveJson = (data: any, params: { path: string }) => {
 	try {
 		fs.writeFileSync(params.path, Buffer.from(JSON.stringify(data)));
 	} catch (err) {
@@ -35,8 +38,11 @@ const saveJson = (data, params) => {
 	}
 };
 
-const writeJsonl = (jsonArray, params) => {
-	return new Promise((resolve, reject) => {
+const writeJsonl = (
+	jsonArray: any[],
+	params: { outputName: string; compress?: boolean; outputPath: string; compressionLevel?: number },
+) => {
+	return new Promise<void>((resolve, reject) => {
 		const filename = params.compress ? `${params.outputName}.temp.jsonl` : `${params.outputName}.jsonl`;
 		const writableStream = fs.createWriteStream(path.join(params.outputPath, filename));
 
@@ -93,8 +99,8 @@ const writeJsonl = (jsonArray, params) => {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const CompressZSTD = (params) => {
-	return new Promise((resolve, reject) => {
+const CompressZSTD = (params: { outputPath: string; inputPath: string; level?: number }) => {
+	return new Promise<void>((resolve, reject) => {
 		const ps = new ProcessStream();
 
 		// Detect architecture to pass the correct native zstd module
@@ -102,7 +108,7 @@ const CompressZSTD = (params) => {
 			.spawn(path.resolve(__dirname, `../../../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`), [
 				`-${typeof params.level === 'undefined' ? 7 : params.level}`,
 			])
-			.on('exit', (code, signal) => {
+			.on('exit', (code: number, signal: string) => {
 				console.log('exit', code, signal);
 
 				if (code !== 0) {
@@ -115,7 +121,7 @@ const CompressZSTD = (params) => {
 		fs.createReadStream(params.inputPath)
 			.pipe(cs)
 			.pipe(output)
-			.on('error', (err) => {
+			.on('error', (err: Error) => {
 				console.log(err);
 				reject(err);
 			})

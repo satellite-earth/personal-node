@@ -1,176 +1,38 @@
 import EventEmitter from 'events';
-import { randomUUID } from 'crypto';
-import { verifyEvent } from 'nostr-tools';
+import { Filter, NostrEvent } from 'nostr-tools';
 
-function safeVerify(event) {
-	try {
-		return verifyEvent(event);
-	} catch (error) {}
-	return false;
-}
+import type Graph from '../graph/index.js';
+import { type Node } from '../graph/index.js';
+import { Relay } from './relay.js';
 
-class Relay extends EventEmitter {
-	constructor(url, seen, options = {}) {
+type EventMap = {
+	'event:received': [NostrEvent];
+	'relay:status': [{ status: 'connected' | 'disconnected'; relay: Relay }];
+};
+
+export default class Receiver extends EventEmitter<EventMap> {
+	graph: Graph;
+
+	listening = false;
+	seen = new Set<string>();
+
+	remote: Record<
+		string,
+		{ relay: Relay; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
+	> = {};
+
+	constructor(graph: Graph) {
 		super();
-
-		this.url = url;
-
-		this.subs = {};
-
-		this.seen = seen;
-
-		this.options = options;
-	}
-
-	connect() {
-		try {
-			this.ws = new WebSocket(this.url);
-		} catch (err) {
-			console.log('failed to open ws connection to ' + this.url);
-			return;
-		}
-
-		if (!this.ws) {
-			console.log('Failed to create ws');
-			return;
-		}
-
-		this.ws.on('open', () => {
-			console.log(this.url + ' connected');
-			this.connected = true;
-			this.emit('connect', this);
-		});
-
-		this.ws.on('error', (err) => {
-			console.log(this.url + ' errored: ' + err.message);
-			//this.connected = false;
-		});
-
-		this.ws.on('close', () => {
-			console.log(this.url + ' closed');
-
-			this.connected = false;
-
-			if (this.connected) {
-				this.connected = false;
-				this.emit('disconnect', this);
-			}
-		});
-
-		this.ws.onmessage = (message) => {
-			let data;
-
-			try {
-				if (message.data) {
-					data = JSON.parse(message.data);
-				}
-
-				if (data) {
-					const sub = this.subs[data[1]];
-
-					if (!sub) {
-						return;
-					}
-
-					if (data[0] === 'EVENT') {
-						const event = data[2];
-
-						if (this.seen.has(event.id)) {
-							return;
-						}
-
-						if (this.options.skipVerification || safeVerify(event)) {
-							this.emit('event', event);
-						}
-					} else if (data[0] === 'EOSE') {
-						if (sub.oneose) {
-							sub.oneose(this);
-						}
-					} else if (data[0] === 'CLOSED') {
-						// Clear existing subs
-						this.subs = {};
-
-						this.emit('disconnect', this);
-					}
-				}
-			} catch (err) {
-				console.log(err);
-			}
-		};
-	}
-
-	disconnect() {
-		if (this.ws) {
-			try {
-				this.ws.close();
-
-				this.emit('disconnect', this);
-			} catch (err) {
-				console.log(err);
-			}
-		}
-	}
-
-	subscribe(filters = [], options = {}) {
-		if (filters.length === 0) {
-			return;
-		}
-
-		const id = options.id || randomUUID();
-
-		this.subs[id] = {
-			...options,
-		};
-
-		this.send(['REQ', id, ...filters]);
-	}
-
-	unsubscribe(subid) {
-		if (!this.connected) {
-			return;
-		}
-
-		this.send(['CLOSE', subid]);
-	}
-
-	unsubscribeAll() {
-		for (let subid of Object.keys(this.subs)) {
-			this.unsubscribe(subid);
-		}
-	}
-
-	send(data) {
-		try {
-			this.ws.send(JSON.stringify(data));
-		} catch (err) {
-			console.log('send error', err);
-		}
-	}
-}
-
-class Receiver extends EventEmitter {
-	constructor(graph) {
-		super();
-
-		// Refs to remote subscriptions
-		this.remote = {};
-
-		// Social graph
 		this.graph = graph;
-
-		// If receiver switched on
-		this.listening = false;
-
-		// Seen events
-		this.seen = new Set();
 	}
 
-	listen(params, options = {}) {
+	listen(params: { pubkeys: string[]; cacheLevel: 1 | 2 | 3; relays: { url: string }[] }) {
 		console.log('called listen in receiver instance', params);
 
 		this.listening = true;
 
 		for (let url of Object.keys(this.remote)) {
+			// @ts-expect-error
 			if (!params[url]) {
 				delete this.remote[url];
 			}
@@ -178,24 +40,20 @@ class Receiver extends EventEmitter {
 
 		// References needed to fetch events the user
 		// might care about according to `a` tag
-		const parameterizedReplaceableRefs = new Set();
+		const parameterizedReplaceableRefs = new Set<string>();
 
 		// Filter and list of nodes by degrees of
 		// separation and map to authors array,
 		// truncated to avoid relays dropping req
-		const filterNodes = (items, z) => {
+		const filterNodes = (items: Node[], z: number) => {
 			return items
-				.filter((item) => {
-					return item.z === z;
-				})
+				.filter((item) => item.z === z)
 				.slice(0, 1000)
-				.map((item) => {
-					return item.p;
-				});
+				.map((item) => item.p);
 		};
 
 		// Maybe pass received data to handler as event
-		const handleEvent = (event) => {
+		const handleEvent = (event: NostrEvent) => {
 			if (this.seen.has(event.id)) {
 				return;
 			}
@@ -245,7 +103,7 @@ class Receiver extends EventEmitter {
 		};
 
 		// Handle closed connection to relay
-		const handleDisconnect = (relay) => {
+		const handleDisconnect = (relay: Relay) => {
 			this.emit('relay:status', {
 				status: 'disconnected',
 				relay,
@@ -270,7 +128,7 @@ class Receiver extends EventEmitter {
 			}
 		};
 
-		const handleConnect = (relay) => {
+		const handleConnect = (relay: Relay) => {
 			// On successful connect, reset reconnect state
 			if (this.remote[relay.url]) {
 				clearTimeout(this.remote[relay.url].reconnecting);
@@ -283,7 +141,7 @@ class Receiver extends EventEmitter {
 			});
 
 			const primaryReference = () => {
-				const primaryReferenceFilters = [
+				const primaryReferenceFilters: Filter[] = [
 					{
 						// DM's for you
 						'#p': params.pubkeys,
@@ -360,7 +218,7 @@ class Receiver extends EventEmitter {
 				);
 			};
 
-			const secondaryMetadata = (relay) => {
+			const secondaryMetadata = () => {
 				const following = filterNodes(this.graph.getNodes(params.pubkeys), 1);
 
 				// Secondary metadata
@@ -431,5 +289,3 @@ class Receiver extends EventEmitter {
 		this.removeAllListeners();
 	}
 }
-
-export default Receiver;
