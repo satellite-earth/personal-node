@@ -70,11 +70,25 @@ process.on('SIGINT', () => {
 
 // Create http server
 const httpServer = express();
-server.on('request', httpServer);
 
 httpServer.use(blobServer.router);
 
-httpServer.use(express.static('../../dashboard-ui/dist'));
+// redirect to dashboard ui when root page is loaded
+httpServer.get('/', (req, res, next) => {
+	if (!req.url.includes(`auth=`)) {
+		const params = new URLSearchParams();
+		params.set('auth', app.config.auth);
+		params.set('relay', `ws://127.0.0.1:` + PORT);
+		params.set('env', 'local');
+		res.redirect('/?' + params.toString());
+	}
+	next();
+});
+
+// host the dashboard-ui for the node
+httpServer.use(express.static('../dashboard-ui/dist'));
+
+server.on('request', httpServer);
 
 app.start();
 

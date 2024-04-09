@@ -49,6 +49,7 @@ export default class LocalDatabase extends EventEmitter {
 	clear() {
 		this.db.transaction(() => {
 			this.db.prepare(`DELETE FROM tags`).run();
+			this.db.prepare(`DELETE FROM event_labels`).run();
 			this.db.prepare(`DELETE FROM events`).run();
 		})();
 	}
