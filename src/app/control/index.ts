@@ -3,24 +3,14 @@ import { NostrEvent } from 'nostr-tools';
 import { IncomingMessage } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 
-import { PORT } from '../../env.js';
 import * as Util from '../lib/util/index.js';
 import API from './API.js';
 import type App from '../index.js';
 import { type Relay } from '../lib/receiver/relay.js';
+import { AppConfig } from '../config-manager.js';
 
 export type ControlOptions = {
-	configPath: string;
 	controlAuth?: (auth: string) => boolean;
-};
-
-export type ControlConfig = {
-	cacheLevel: 1 | 2 | 3;
-	relayPort: number;
-	autoListen: boolean;
-	logsEnabled: boolean;
-	pubkeys: string[];
-	relays: { url: string }[];
 };
 
 export type ControlStatus = {
@@ -32,9 +22,7 @@ export type ControlStatus = {
 
 class Control {
 	app: App;
-
 	options: ControlOptions;
-	config: ControlConfig;
 
 	authorizedConnections = new Set<WebSocket>();
 
@@ -58,17 +46,6 @@ class Control {
 
 		this.options = options;
 
-		// Load initial config from disk
-		this.config = {
-			cacheLevel: 3,
-			relayPort: PORT,
-			autoListen: true,
-			logsEnabled: true,
-			pubkeys: [],
-			relays: [],
-			...(Util.loadJson({ path: this.options.configPath }) || {}),
-		};
-
 		// Actions may be called locally and also
 		// by proxy through a control connection
 		this.api = API(this);
@@ -89,28 +66,21 @@ class Control {
 
 	// Set config file state, save to disk,
 	// and forward to change to controllers
-	setConfig(data?: Partial<ControlConfig>) {
-		if (!data) return;
+	setConfig(config?: Partial<AppConfig>) {
+		if (!config) return;
 
-		this.config = {
-			...this.config,
-			...data,
-		};
-
-		Util.saveJson(this.config, {
-			path: this.options.configPath,
-		});
+		this.app.config.updateConfig(config);
 
 		this.broadcast({
 			type: 'config/set',
-			data,
+			data: config,
 		});
 
 		this.log({
-			text: `[CONFIG] ${Object.keys(data)
+			text: `[CONFIG] ${Object.keys(config)
 				.map((key) => {
 					// @ts-expect-error
-					return `${key} = ${JSON.stringify(data[key])}`.toUpperCase();
+					return `${key} = ${JSON.stringify(config[key])}`.toUpperCase();
 				})
 				.join(' | ')}`,
 		});
@@ -310,7 +280,7 @@ class Control {
 
 	// Send log as authorized broadcast
 	log(data: any) {
-		if (this.config.logsEnabled) {
+		if (this.app.config.config.logsEnabled) {
 			this.broadcast({
 				type: 'logs/remote',
 				data: {

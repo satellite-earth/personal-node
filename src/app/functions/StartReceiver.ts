@@ -9,7 +9,12 @@ export default function StartReceiver(app: App) {
 		app.control.setStatus(status);
 
 		// await receiver.listen(control.config);
-		app.receiver.listen(app.control.config);
+		const { owner, pubkeys } = app.config.config;
+		app.receiver.listen({
+			pubkeys: owner ? [owner, ...pubkeys] : pubkeys,
+			relays: app.config.config.relays,
+			cacheLevel: app.config.config.cacheLevel,
+		});
 
 		// Report status to parent process
 		app.control.sendToParentProcess({

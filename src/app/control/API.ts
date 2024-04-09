@@ -2,7 +2,7 @@ import OS from 'os';
 
 import * as Functions from '../functions/index.js';
 import type Control from './index.js';
-import { ControlConfig } from './index.js';
+import { AppConfig } from '../config-manager.js';
 
 const API = (control: Control) => {
 	return {
@@ -56,7 +56,7 @@ const API = (control: Control) => {
 			control.broadcast([
 				{
 					type: 'config/set',
-					data: control.config,
+					data: control.app.config.config,
 				},
 				{
 					type: 'status/set',
@@ -73,11 +73,11 @@ const API = (control: Control) => {
 		},
 
 		// Set node config and return updated props
-		SET_CONFIG: (data: Partial<ControlConfig>) => {
+		SET_CONFIG: (data: Partial<AppConfig>) => {
 			control.setConfig(data);
 		},
 
-		RECEIVER_CONFIG: (data: Partial<ControlConfig>) => {
+		RECEIVER_CONFIG: (data: Partial<AppConfig>) => {
 			// Modify receiver config
 			control.setConfig(data);
 

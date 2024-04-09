@@ -6,28 +6,24 @@ import Receiver from './lib/receiver/index.js';
 
 import Control from './control/index.js';
 import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
-
-type AppConfig = {
-	path: string;
-	auth: string;
-};
+import ConfigManager from './config-manager.js';
 
 class App {
-	config: AppConfig;
+	config: ConfigManager;
 	database: Database;
 	eventStore: IEventStore;
 	graph: Graph;
 	receiver: Receiver;
 	control: Control;
 
-	constructor(config: AppConfig) {
-		this.config = config;
+	constructor(dataPath: string) {
+		const configPath = path.join(dataPath, 'node.json');
 
-		console.log('app config', this.config);
+		this.config = new ConfigManager(configPath);
 
 		// Init embedded sqlite database
 		this.database = new Database({
-			directory: this.config.path,
+			directory: dataPath,
 			reportInterval: 1000,
 		});
 
@@ -43,9 +39,8 @@ class App {
 		// API for controlling the node by proxy - create config
 		// file in the db directory unless otherwise specified
 		this.control = new Control(this, {
-			configPath: path.join(this.config.path, 'node.json'),
 			controlAuth: (auth) => {
-				return auth === this.config.auth;
+				return auth === this.config.config.dashboardAuth;
 			},
 			//configPath: process.env.CONFIG_PATH || path.join(this.database.config.directory, 'node.json')
 			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',

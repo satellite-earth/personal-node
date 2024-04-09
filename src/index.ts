@@ -20,24 +20,22 @@ useWebSocketImplementation(WebSocket);
 const server = createServer();
 const wss = new WebSocketServer({ server });
 
+// Fix CORS for websocket
+wss.on('headers', (headers, request) => {
+	headers.push('Access-Control-Allow-Origin: *');
+});
+
 // NOTE: this might not make sense for personal node
 terminateConnectionsInterval(wss, 30000);
 
-const app = new App({
-	path: DATA_PATH,
-	auth: AUTH,
-});
+const app = new App(DATA_PATH);
 
 app.control.attachToServer(wss);
 
 const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
 const relay = new NostrRelay(app.eventStore);
-
-// Fix CORS for websocket
-wss.on('headers', (headers, request) => {
-	headers.push('Access-Control-Allow-Origin: *');
-});
+relay.sendChallenge = true;
 
 wss.on('connection', async (ws, req) => {
 	if (req.url === '/') return relay.handleConnection(ws, req);
@@ -53,7 +51,7 @@ wss.on('connection', async (ws, req) => {
 
 const blobMetadata = new BlossomSQLite(app.database.db);
 
-const blobStorage = new LocalStorage(path.join(app.config.path, 'blobs'));
+const blobStorage = new LocalStorage(path.join(DATA_PATH, 'blobs'));
 await blobStorage.setup();
 
 const blobServer = new DesktopBlobServer(blobStorage, blobMetadata);
@@ -77,9 +75,7 @@ httpServer.use(blobServer.router);
 httpServer.get('/', (req, res, next) => {
 	if (!req.url.includes(`auth=`)) {
 		const params = new URLSearchParams();
-		params.set('auth', app.config.auth);
-		params.set('relay', `ws://127.0.0.1:` + PORT);
-		params.set('env', 'local');
+		params.set('auth', app.config.config.dashboardAuth);
 		res.redirect('/?' + params.toString());
 	}
 	next();
@@ -94,5 +90,5 @@ app.start();
 
 // Listen for http connections
 server.listen(PORT, () => {
-	console.log(`server running on`, PORT);
+	logger(`server running on`, PORT);
 });
