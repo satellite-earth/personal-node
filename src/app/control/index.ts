@@ -250,21 +250,28 @@ class Control {
 			console.log(err);
 		}
 	}
-	handleControlMessage(message: string[], ws: WebSocket) {
-		// Maybe authorize connection - maintain a flag or most recent
-		// auth status on each websocket so that config updates can
-		// be forwarded to multiple simultaneous control connections.
-		// Send client a notice when its auth state changes.
-		if (this.options.controlAuth?.(message[1])) {
+
+	handleControlAuth(message: string[], ws: WebSocket) {
+		if (this.options.controlAuth?.(message[2])) {
 			this.authorizedConnections.add(ws);
+			ws.send(JSON.stringify(['CONTROL', { type: 'AUTH', data: true }]));
 		} else {
 			this.authorizedConnections.delete(ws);
+			ws.send(JSON.stringify(['CONTROL', { type: 'AUTH', data: false }]));
+			return;
+		}
+	}
+	handleControlMessage(message: string[], ws: WebSocket) {
+		if (message[1] === 'AUTH') {
+			this.handleControlAuth(message, ws);
 			return;
 		}
 
-		// Invoke the action, sending response
-		// to each active control connection
-		this.action(message[2], message[3]);
+		if (this.authorizedConnections.has(ws)) {
+			// Invoke the action, sending response
+			// to each active control connection
+			this.action(message[1], message[2]);
+		}
 	}
 
 	attachToServer(wss: WebSocketServer) {
