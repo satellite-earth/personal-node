@@ -1,15 +1,15 @@
 import { type Database } from 'better-sqlite3';
 import { Debugger } from 'debug';
-import { Filter, NostrEvent, Relay, Subscription } from 'nostr-tools';
+import { Filter, NostrEvent, Relay, Subscription, kinds } from 'nostr-tools';
 
-import { NostrRelay } from '../../../core/dist/index.js';
+import { NostrRelay, RelayActions } from '../../../core/dist/index.js';
 import { LabeledEventStore } from './labeled-event-store.js';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
 import { logger } from '../logger.js';
 
 export class CommunityProxy {
 	log: Debugger;
-	db: Database;
+	database: Database;
 	connectionManager: HyperConnectionManager;
 	definition: NostrEvent;
 
@@ -21,13 +21,14 @@ export class CommunityProxy {
 		return this.definition.tags.filter((t) => t[0] === 'r' && t[1]).map((t) => t[1]);
 	}
 
-	constructor(db: Database, communityDefinition: NostrEvent, connectionManager: HyperConnectionManager) {
-		this.db = db;
+	constructor(database: Database, communityDefinition: NostrEvent, connectionManager: HyperConnectionManager) {
+		this.database = database;
 		this.connectionManager = connectionManager;
 		this.definition = communityDefinition;
 		this.log = logger.extend('community-proxy:' + communityDefinition.pubkey);
 
-		this.eventStore = new LabeledEventStore(this.db, communityDefinition.pubkey);
+		this.eventStore = new LabeledEventStore(this.database, communityDefinition.pubkey);
+		this.eventStore.setup();
 		this.relay = new NostrRelay(this.eventStore);
 
 		this.relay.on('event:received', (event) => {
@@ -47,7 +48,7 @@ export class CommunityProxy {
 
 	protected async connectUpstream() {
 		if (this.upstream) {
-			this.upstream.close();
+			if (this.upstream.connected) this.upstream.close();
 			this.upstream = undefined;
 		}
 
@@ -57,7 +58,6 @@ export class CommunityProxy {
 		if (hyperAddress) {
 			const serverInfo = await this.connectionManager.getLocalAddress(hyperAddress);
 			address = new URL(`ws://${serverInfo.address}:${serverInfo.port}`).toString();
-			this.log('Bound hyper address to', address);
 		}
 
 		if (!address) throw new Error('Failed to find connection address');
@@ -77,20 +77,60 @@ export class CommunityProxy {
 
 		setTimeout(() => {
 			this.syncMetadata();
+			this.syncDeletions();
 		}, 100);
+	}
+
+	handleEvent(event: NostrEvent) {
+		try {
+			switch (event.kind) {
+				case kinds.EventDeletion:
+					this.handleDeleteEvent(event);
+					break;
+				default:
+					this.eventStore.addEvent(event);
+					break;
+			}
+		} catch (error) {
+			this.log('Failed to handle event');
+			console.log(error);
+		}
+	}
+
+	handleDeleteEvent(deleteEvent: NostrEvent) {
+		const communityPubkey = this.definition.pubkey;
+
+		const ids = RelayActions.handleDeleteEvent(
+			this.eventStore,
+			deleteEvent,
+			deleteEvent.pubkey === communityPubkey ? () => true : undefined,
+		);
+
+		this.log(`Deleted`, ids.length, 'events');
 	}
 
 	syncMetadata() {
 		if (!this.upstream) return;
 
 		this.log('Opening subscription to sync metadata');
-		this.upstream.subscribe([{ kinds: [0, 10002, 12012, 39000, 39001, 39002] }], {
+		this.upstream.subscribe([{ kinds: [kinds.Metadata, kinds.RelayList, 12012, 39000, 39001, 39002] }], {
 			// @ts-expect-error
 			id: 'metadata-sync',
-			onevent: (event) => this.eventStore.addEvent(event),
-			onclose: () => {
-				this.log('Closed metadata sync');
-			},
+			onevent: (event) => this.handleEvent(event),
+			onclose: () => this.log('Closed metadata sync'),
+		});
+	}
+
+	syncDeletions() {
+		if (!this.upstream) return;
+
+		this.log('Opening subscription to sync deletions');
+
+		this.upstream.subscribe([{ kinds: [kinds.EventDeletion] }], {
+			// @ts-expect-error
+			id: 'deletion-sync',
+			onevent: (event) => this.handleEvent(event),
+			onclose: () => this.log('Closed deletion sync'),
 		});
 	}
 

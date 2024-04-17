@@ -1,10 +1,12 @@
 import net from 'net';
 import HyperDHT from 'hyperdht';
 import { pipeline } from 'streamx';
+import { logger } from '../logger.js';
 
 const START_PORT = 25100;
 
 export class HyperConnectionManager {
+	log = logger.extend(`hyper-connection-manager`);
 	sockets = new Map<string, net.Socket>();
 	servers = new Map<string, net.Server>();
 	node: HyperDHT;
@@ -30,7 +32,9 @@ export class HyperConnectionManager {
 
 			this.servers.set(pubkey, proxy);
 
-			proxy.listen(this.lastPort++, '127.0.0.1', () => {
+			const port = this.lastPort++;
+			proxy.listen(port, '127.0.0.1', () => {
+				this.log('Bound hyper address to port:', port);
 				res(proxy);
 			});
 		});
