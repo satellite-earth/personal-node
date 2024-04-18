@@ -106,7 +106,7 @@ export class CommunityProxy {
 			deleteEvent.pubkey === communityPubkey ? () => true : undefined,
 		);
 
-		this.log(`Deleted`, ids.length, 'events');
+		if (ids.length) this.log(`Deleted`, ids.length, 'events');
 	}
 
 	syncMetadata() {

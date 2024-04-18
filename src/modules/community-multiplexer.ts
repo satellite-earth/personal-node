@@ -83,6 +83,7 @@ export class CommunityMultiplexer {
 		for (const [pubkey, community] of this.communities) {
 			community.stop();
 		}
+		this.communities.clear();
 		this.connectionManager.stop();
 	}
 }

@@ -33,7 +33,7 @@ class App {
 		// Initialize model of the social graph
 		this.graph = new Graph();
 
-		// Initializse receiver for pulling data from remote relays
+		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this.graph);
 
 		// API for controlling the node by proxy - create config

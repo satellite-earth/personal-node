@@ -70,23 +70,13 @@ await blobStorage.setup();
 
 const blobServer = new DesktopBlobServer(blobStorage, blobMetadata);
 
-// Allow parent (if any) to tell the node to shut itself
-// down gracefully instead of just killing the process
-process.on('SIGINT', () => {
-	logger('instance got SIGINT');
-	app.stop();
-	relay.stop();
-	communityMultiplexer.stop();
-	process.exit(0);
-});
-
 // Create http server
-const httpServer = express();
+const expressServer = express();
 
-httpServer.use(blobServer.router);
+expressServer.use(blobServer.router);
 
 // redirect to dashboard ui when root page is loaded
-httpServer.get('/', (req, res, next) => {
+expressServer.get('/', (req, res, next) => {
 	if (!req.url.includes(`auth=`)) {
 		const params = new URLSearchParams();
 		params.set('auth', app.config.config.dashboardAuth);
@@ -96,9 +86,9 @@ httpServer.get('/', (req, res, next) => {
 });
 
 // host the dashboard-ui for the node
-httpServer.use(express.static('../dashboard-ui/dist'));
+expressServer.use(express.static('../dashboard-ui/dist'));
 
-server.on('request', httpServer);
+server.on('request', expressServer);
 
 app.start();
 
@@ -107,3 +97,17 @@ server.listen(PORT, () => {
 	logger(`server running on`, PORT);
 	logger('AUTH', app.config.config.dashboardAuth);
 });
+
+// shutdown process
+async function shutdown() {
+	logger('shutting down');
+
+	app.stop();
+	relay.stop();
+	communityMultiplexer.stop();
+	server.close();
+
+	process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
