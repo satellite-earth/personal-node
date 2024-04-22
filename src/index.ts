@@ -88,7 +88,8 @@ expressServer.get('/', (req, res, next) => {
 });
 
 // host the dashboard-ui for the node
-expressServer.use(express.static('../dashboard-ui/dist'));
+const dashboardDir = path.dirname(import.meta.resolve('@satellite-earth/dashboard-ui').replace('file://', ''));
+expressServer.use(express.static(dashboardDir));
 
 server.on('request', expressServer);
 
