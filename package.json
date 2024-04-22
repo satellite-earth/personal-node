@@ -1,6 +1,6 @@
 {
 	"name": "@satellite-earth/private-node",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
 	"license": "MIT",
 	"repository": {
@@ -27,7 +27,7 @@
 	},
 	"dependencies": {
 		"@satellite-earth/core": "^0.1.2",
-		"@satellite-earth/dashboard-ui": "^0.1.0",
+		"@satellite-earth/dashboard-ui": "^0.1.1",
 		"better-sqlite3": "^9.4.5",
 		"blossom-server-sdk": "^0.2.3",
 		"cors": "^2.8.5",
