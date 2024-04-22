@@ -62,13 +62,18 @@ export class CommunityProxy {
 
 		if (!address) throw new Error('Failed to find connection address');
 
-		this.log('Connecting to upstream', address);
-		this.upstream = await Relay.connect(address);
+		try {
+			this.log('Connecting to upstream', address);
+			this.upstream = await Relay.connect(address);
 
-		this.upstream.onclose = () => {
-			this.log('Upstream connection closed');
-			this.upstream = undefined;
-		};
+			this.upstream.onclose = () => {
+				this.log('Upstream connection closed');
+				this.upstream = undefined;
+			};
+		} catch (error) {
+			this.log('Failed to connect to upstream');
+			if (error instanceof Error) this.log(error);
+		}
 	}
 
 	async connect() {
