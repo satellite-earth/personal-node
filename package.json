@@ -1,6 +1,6 @@
 {
 	"name": "@satellite-earth/private-node",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
 	"license": "MIT",
 	"repository": {
@@ -9,20 +9,24 @@
 	},
 	"main": "dist/index.js",
 	"type": "module",
+	"types": "dist/index.d.ts",
 	"scripts": {
+		"prepack": "yarn build",
 		"dev": "DEBUG='satellite,satellite:*' node dist/index.js",
 		"build": "tsc",
 		"rebuild": "electron-rebuild --version 28.2.0",
 		"format": "prettier -w ."
 	},
-	"keywords": [
-		"nostr"
+	"files": [
+		"dist",
+		"lib"
 	],
 	"author": {
 		"name": "Stuart Bowman",
 		"email": "sbowman@satellite.earth"
 	},
 	"dependencies": {
+		"@satellite-earth/core": "^0.1.2",
 		"better-sqlite3": "^9.4.5",
 		"blossom-server-sdk": "^0.2.3",
 		"cors": "^2.8.5",
@@ -43,8 +47,8 @@
 		"@types/node": "^20.12.3",
 		"@types/ws": "^8.5.10",
 		"electron-rebuild": "^3.2.9",
-		"ts-node": "^10.9.2",
 		"prettier": "^3.2.5",
+		"ts-node": "^10.9.2",
 		"typescript": "^5.4.3"
 	}
 }

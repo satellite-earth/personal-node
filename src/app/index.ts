@@ -5,7 +5,7 @@ import Graph from './lib/graph/index.js';
 import Receiver from './lib/receiver/index.js';
 
 import Control from './control/index.js';
-import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
+import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
 import ConfigManager from './config-manager.js';
 
 class App {

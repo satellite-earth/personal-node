@@ -18,7 +18,41 @@ Satellite private node:
 
 (Much more info forthcoming)
 
-### Run it
+## Installing @satellite-earth/core dependency
+
+There are two ways to install `@satellite-earth/core` dependency
+
+### npm link
+
+The simplest way to setup the `@satellite-earth/core` dependency is to clone the repo into another directory and use `npm link` to link the packages
+
+```sh
+git clone https://github.com/satellite-earth/core.git
+cd core
+npm install
+npm run build
+npm link
+
+# navigate back to public-node
+cd ../public-node
+npm link "@satellite-earth/core"
+npm run build
+```
+
+### github access token
+
+Follow the instructions [here](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-to-github-packages) to create a access token and login to the github registry
+
+```sh
+$ npm login --scope=@satellite-earth --auth-type=legacy --registry=https://npm.pkg.github.com
+
+> Username: USERNAME
+> Password: TOKEN
+```
+
+Once you have logged into `npm.pkg.github.com` you can run `npm install` normally
+
+## Run it
 
 Clone into the repo and
 
@@ -47,5 +81,3 @@ Once your env is set up
 If successful you should see a message like `satellite server running on PORT`
 
 You can now add your local relay to other nostr web apps or manage backups using [dashboard-ui](https://github.com/satellite-earth/dashboard-ui)
-
-

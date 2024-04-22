@@ -5,7 +5,7 @@ import path from 'path';
 import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
 
-import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '../../core/dist/index.js';
+import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH } from './env.js';
 import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';

@@ -1,6 +1,6 @@
 import { Database } from 'better-sqlite3';
 import { Filter, NostrEvent } from 'nostr-tools';
-import { IEventStore, SQLiteEventStore } from '../../../core/dist/index.js';
+import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
 import { logger } from '../logger.js';
 
 export function mapParams(params: any[]) {

@@ -7,7 +7,7 @@ import { NostrEvent, SimplePool } from 'nostr-tools';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
 import { logger } from '../logger.js';
 import { CommunityProxy } from './community-proxy.js';
-import { IEventStore } from '../../../core/dist/index.js';
+import { IEventStore } from '@satellite-earth/core';
 
 export class CommunityMultiplexer {
 	log = logger.extend('community-multiplexer');
