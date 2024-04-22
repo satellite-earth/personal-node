@@ -4,6 +4,7 @@ import express from 'express';
 import path from 'path';
 import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
+import { mkdirp } from 'mkdirp';
 
 import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
 import App from './app/index.js';
@@ -28,6 +29,7 @@ wss.on('headers', (headers, request) => {
 // NOTE: this might not make sense for personal node
 terminateConnectionsInterval(wss, 30000);
 
+await mkdirp(DATA_PATH);
 const app = new App(DATA_PATH);
 
 app.control.attachToServer(wss);
