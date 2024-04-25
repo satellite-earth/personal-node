@@ -5,18 +5,15 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "ts-node",
+			"name": "node",
 			"type": "node",
 			"request": "launch",
-			"args": ["dist/index.js"],
-			"runtimeArgs": ["-r", "ts-node/register"],
+			"args": ["src/index.ts"],
+			"runtimeArgs": ["--loader", "@swc-node/register/esm"],
 			"cwd": "${workspaceRoot}",
 			"protocol": "inspector",
 			"internalConsoleOptions": "openOnSessionStart",
-			"outputCapture": "std",
-			"env": {
-				"DEBUG": "satellite,satellite:*"
-			}
+			"outputCapture": "std"
 		}
 	]
 }

@@ -45,11 +45,18 @@ export default class LocalDatabase extends EventEmitter {
 		}
 	}
 
+	hasTable(table: string) {
+		const result = this.db
+			.prepare(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name=?`)
+			.get([table]) as { count: number };
+		return result.count > 0;
+	}
+
 	// Delete all records in the database
 	clear() {
 		this.db.transaction(() => {
 			this.db.prepare(`DELETE FROM tags`).run();
-			this.db.prepare(`DELETE FROM event_labels`).run();
+			if (this.hasTable('event_labels')) this.db.prepare(`DELETE FROM event_labels`).run();
 			this.db.prepare(`DELETE FROM events`).run();
 		})();
 	}

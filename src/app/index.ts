@@ -1,20 +1,29 @@
 import path from 'path';
+import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
+import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 
 import Database from './lib/sqlite/index.js';
 import Graph from './lib/graph/index.js';
 import Receiver from './lib/receiver/index.js';
 
 import Control from './control/index.js';
-import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
 import ConfigManager from './config-manager.js';
+import { BlobDownloader } from '../modules/blob-downloader.js';
+import { DATA_PATH } from '../env.js';
 
 class App {
+	running = false;
+
 	config: ConfigManager;
 	database: Database;
 	eventStore: IEventStore;
 	graph: Graph;
 	receiver: Receiver;
 	control: Control;
+
+	blobMetadata: IBlobMetadataStore;
+	blobStorage: LocalStorage;
+	blobDownloader: BlobDownloader;
 
 	constructor(dataPath: string) {
 		const configPath = path.join(dataPath, 'node.json');
@@ -46,6 +55,10 @@ class App {
 			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',
 		});
 
+		this.blobMetadata = new BlossomSQLite(this.database.db);
+		this.blobStorage = new LocalStorage(path.join(DATA_PATH, 'blobs'));
+		this.blobDownloader = new BlobDownloader(this.blobStorage, this.blobMetadata);
+
 		// Handle database status reports
 		this.database.on('status', (data) => {
 			// NOTE: this is missing for some reason, Im not sure what it dose
@@ -57,9 +70,14 @@ class App {
 			this.control.handleRelayStatus(data);
 		});
 
-		// Pass received events to the relay
 		this.receiver.on('event:received', (event) => {
+			// Pass received events to the relay
 			this.eventStore.addEvent(event);
+
+			// Pass the event to the blob downloader
+			if (event.pubkey === this.config.config.owner) {
+				this.blobDownloader.queueBlobsFromEventContent(event);
+			}
 		});
 
 		// Handle new events being saved
@@ -69,6 +87,8 @@ class App {
 	}
 
 	start() {
+		this.running = true;
+
 		const events = this.eventStore.getEventsForFilters([{ kinds: [0, 3] }]);
 
 		for (let event of events) {
@@ -77,9 +97,18 @@ class App {
 
 		// Set initial stats for the database
 		this.control.updateDatabaseStatus();
+
+		this.tick();
+	}
+
+	tick() {
+		this.blobDownloader.downloadNext();
+
+		if (this.running) setTimeout(this.tick.bind(this), 1000);
 	}
 
 	stop() {
+		this.running = false;
 		this.database.stop();
 		this.receiver.stop();
 		this.control.stop();

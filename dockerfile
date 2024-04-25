@@ -29,6 +29,5 @@ VOLUME [ "/app/data" ]
 EXPOSE 3000
 
 ENV PORT="3000"
-ENV DEBUG="satellite,satellite:*"
 
 ENTRYPOINT [ "node", "." ]

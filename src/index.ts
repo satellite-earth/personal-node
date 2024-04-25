@@ -8,8 +8,7 @@ import { mkdirp } from 'mkdirp';
 
 import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
 import App from './app/index.js';
-import { PORT, DATA_PATH, AUTH } from './env.js';
-import { LocalStorage, BlossomSQLite } from 'blossom-server-sdk';
+import { PORT, DATA_PATH } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -65,12 +64,9 @@ wss.on('connection', async (ws, req) => {
 	}
 });
 
-const blobMetadata = new BlossomSQLite(app.database.db);
+await app.blobStorage.setup();
 
-const blobStorage = new LocalStorage(path.join(DATA_PATH, 'blobs'));
-await blobStorage.setup();
-
-const blobServer = new DesktopBlobServer(blobStorage, blobMetadata);
+const blobServer = new DesktopBlobServer(app.blobStorage, app.blobMetadata);
 
 // Create http server
 const expressServer = express();
