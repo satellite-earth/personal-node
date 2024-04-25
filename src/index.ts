@@ -1,12 +1,12 @@
-import 'dotenv/config.js';
+#!/bin/env node
 import WebSocket, { WebSocketServer } from 'ws';
 import express from 'express';
 import path from 'path';
 import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
 import { mkdirp } from 'mkdirp';
-
 import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
+
 import App from './app/index.js';
 import { PORT, DATA_PATH } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';

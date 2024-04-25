@@ -3,6 +3,7 @@
  * If nessisary it should also perform and parsing or error checking on the environment variables
  */
 
+import 'dotenv/config.js';
 import { randomBytes } from 'crypto';
 
 const OWNER_PUBKEY = process.env.OWNER_PUBKEY;
