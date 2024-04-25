@@ -526,10 +526,10 @@
   resolved "https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz"
   integrity sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==
 
-"@types/better-sqlite3@^7.6.9":
-  version "7.6.9"
-  resolved "https://registry.npmjs.org/@types/better-sqlite3/-/better-sqlite3-7.6.9.tgz"
-  integrity sha512-FvktcujPDj9XKMJQWFcl2vVl7OdRIqsSRX9b0acWwTmwLK9CF2eqo/FRcmMLNpugKoX/avA6pb7TorDLmpgTnQ==
+"@types/better-sqlite3@^7.6.10":
+  version "7.6.10"
+  resolved "https://registry.yarnpkg.com/@types/better-sqlite3/-/better-sqlite3-7.6.10.tgz#1818e56490953404acfd44cdde0464f201be6105"
+  integrity sha512-TZBjD+yOsyrUJGmcUj6OS3JADk3+UZcNv3NOBqGkM09bZdi28fNZw8ODqbMOLfKCu7RYCO62/ldq1iHbzxqoPw==
   dependencies:
     "@types/node" "*"
 

@@ -25,16 +25,25 @@ export class HyperConnectionManager {
 				const socket = this.node.connect(Buffer.from(pubkey, 'hex'), {
 					reusableSocket: true,
 				});
+
 				// @ts-expect-error
 				socket.setKeepAlive(5000);
-				pipeline(socket_, socket, socket_);
+
+				socket.on('open', () => {
+					// connect the sockets
+					pipeline(socket_, socket, socket_);
+				});
+				socket.on('error', (error) => {
+					this.log('Failed to connect to', pubkey);
+					this.log(error);
+				});
 			});
 
 			this.servers.set(pubkey, proxy);
 
 			const port = this.lastPort++;
 			proxy.listen(port, '127.0.0.1', () => {
-				this.log('Bound hyper address to port:', port);
+				this.log('Bound hyper address', pubkey, 'to port:', port);
 				res(proxy);
 			});
 		});
