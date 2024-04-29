@@ -6,9 +6,10 @@ import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
 import { mkdirp } from 'mkdirp';
 import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
+import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
-import { PORT, DATA_PATH } from './env.js';
+import { PORT, DATA_PATH, AUTH } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -77,14 +78,16 @@ expressServer.use(blobServer.router);
 expressServer.get('/', (req, res, next) => {
 	if (!req.url.includes(`auth=`)) {
 		const params = new URLSearchParams();
-		params.set('auth', app.config.config.dashboardAuth);
+		params.set('auth', AUTH);
 		res.redirect('/?' + params.toString());
 	}
 	next();
 });
 
 // host the dashboard-ui for the node
-const dashboardDir = path.dirname(import.meta.resolve('@satellite-earth/dashboard-ui').replace('file://', ''));
+const dashboardDir = path.dirname(
+	importMetaResolve('@satellite-earth/dashboard-ui', import.meta.url).replace('file://', ''),
+);
 expressServer.use(express.static(dashboardDir));
 
 server.on('request', expressServer);
@@ -94,7 +97,7 @@ app.start();
 // Listen for http connections
 server.listen(PORT, () => {
 	logger(`server running on`, PORT);
-	logger('AUTH', app.config.config.dashboardAuth);
+	logger('AUTH', AUTH);
 });
 
 // shutdown process

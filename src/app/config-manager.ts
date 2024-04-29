@@ -10,7 +10,6 @@ export type AppConfig = {
 	pubkeys: string[];
 	relays: { url: string }[];
 
-	dashboardAuth: string;
 	cacheLevel: 1 | 2 | 3;
 	autoListen: boolean;
 	logsEnabled: boolean;
@@ -47,7 +46,6 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 			if (config.cacheLevel === undefined) config.cacheLevel = 2;
 			if (config.autoListen === undefined) config.autoListen = false;
 			if (config.logsEnabled === undefined) config.logsEnabled = true;
-			if (config.dashboardAuth === undefined) config.dashboardAuth = randomBytes(20).toString('hex');
 
 			this.config = config;
 
@@ -62,7 +60,6 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 				cacheLevel: 2,
 				autoListen: false,
 				logsEnabled: true,
-				dashboardAuth: randomBytes(20).toString('hex'),
 			};
 
 			this.log('Creating default config', this.config);

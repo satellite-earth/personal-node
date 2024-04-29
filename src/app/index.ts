@@ -9,7 +9,7 @@ import Receiver from './lib/receiver/index.js';
 import Control from './control/index.js';
 import ConfigManager from './config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
-import { DATA_PATH } from '../env.js';
+import { AUTH, DATA_PATH } from '../env.js';
 
 class App {
 	running = false;
@@ -49,7 +49,7 @@ class App {
 		// file in the db directory unless otherwise specified
 		this.control = new Control(this, {
 			controlAuth: (auth) => {
-				return auth === this.config.config.dashboardAuth;
+				return auth === AUTH;
 			},
 			//configPath: process.env.CONFIG_PATH || path.join(this.database.config.directory, 'node.json')
 			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',
