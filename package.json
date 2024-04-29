@@ -19,7 +19,8 @@
 		"dev": "nodemon --loader @swc-node/register/esm src/index.ts",
 		"build": "tsc",
 		"rebuild": "electron-rebuild --version 28.2.0",
-		"format": "prettier -w ."
+		"format": "prettier -w .",
+		"test": "echo no tests"
 	},
 	"files": [
 		"dist",
