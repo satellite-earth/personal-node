@@ -98,6 +98,8 @@ app.start();
 server.listen(PORT, () => {
 	logger(`server running on`, PORT);
 	logger('AUTH', AUTH);
+
+	if (process.send) process.send({ type: 'RELAY_READY' });
 });
 
 // shutdown process
