@@ -37,14 +37,17 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 		this.db.prepare('CREATE INDEX IF NOT EXISTS event_labels_event ON event_labels(event)').run();
 	}
 
-	protected buildSQLQueryForFilter(filter: Filter) {
-		if (this.readAll) return super.buildSQLQueryForFilter(filter);
-		else
-			return super.buildSQLQueryForFilter(filter, {
-				extraJoin: 'INNER JOIN event_labels ON events.id = event_labels.event',
-				extraConditions: ['event_labels.label = ?'],
-				extraParameters: [this.label],
-			});
+	override buildConditionsForFilters(filter: Filter) {
+		const parts = super.buildConditionsForFilters(filter);
+
+		if (!this.readAll) {
+			parts.joins.push('INNER JOIN event_labels ON events.id = event_labels.event');
+			parts.conditions.push('event_labels.label = ?');
+			parts.parameters.push(this.label);
+			return parts;
+		}
+
+		return parts;
 	}
 
 	addEvent(
