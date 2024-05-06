@@ -97,7 +97,7 @@ export class BlobDownloader {
 						sha256,
 						size,
 						type,
-						created: Math.floor(Date.now()),
+						uploaded: Math.floor(Date.now()),
 					});
 				}
 

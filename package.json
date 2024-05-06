@@ -16,6 +16,7 @@
 	"types": "dist/index.d.ts",
 	"scripts": {
 		"prepack": "yarn build",
+		"start": "node .",
 		"dev": "nodemon --loader @swc-node/register/esm src/index.ts",
 		"build": "tsc",
 		"format": "prettier -w .",
@@ -30,7 +31,7 @@
 		"@satellite-earth/core": "^0.1.2",
 		"@satellite-earth/dashboard-ui": "^0.1.1",
 		"better-sqlite3": "^9.6.0",
-		"blossom-server-sdk": "^0.2.3",
+		"blossom-server-sdk": "^0.3.1",
 		"cors": "^2.8.5",
 		"debug": "^4.3.4",
 		"dotenv": "^16.3.1",
