@@ -2,8 +2,9 @@ import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { Filter, NostrEvent, verifyEvent } from 'nostr-tools';
 import { WebSocket } from 'ws';
-import { logger } from '../../../logger.js';
 import { Debugger } from 'debug';
+
+import { logger } from '../../logger.js';
 
 function safeVerify(event: NostrEvent) {
 	try {
@@ -21,7 +22,7 @@ export type RelayOptions = {
 	skipVerification?: boolean;
 };
 
-export class Relay extends EventEmitter {
+export class RelayScrapper extends EventEmitter {
 	log: Debugger;
 	url: string;
 	ws?: WebSocket;

@@ -7,6 +7,7 @@ import { LabeledEventStore } from './labeled-event-store.js';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
 import { logger } from '../logger.js';
 
+/** Used to connect to and sync with remote communities */
 export class CommunityProxy {
 	log: Debugger;
 	database: Database;

@@ -7,6 +7,7 @@ export function mapParams(params: any[]) {
 	return `(${params.map(() => `?`).join(', ')})`;
 }
 
+/** An event store that is can only see a subset of events int the database */
 export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 	label: string;
 	readAll = false;

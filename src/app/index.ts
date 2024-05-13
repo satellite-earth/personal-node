@@ -1,25 +1,31 @@
 import path from 'path';
-import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
+import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 
-import Database from './lib/sqlite/index.js';
-import Graph from './lib/graph/index.js';
-import Receiver from './lib/receiver/index.js';
+import Database from './database.js';
+import Graph from '../modules/graph/index.js';
 
-import Control from './control/index.js';
-import ConfigManager from './config-manager.js';
-import { BlobDownloader } from '../modules/blob-downloader.js';
 import { AUTH, DATA_PATH } from '../env.js';
+import ConfigManager from '../modules/config-manager.js';
+import { BlobDownloader } from '../modules/blob-downloader.js';
+import ControlApi from '../modules/control/control-api.js';
+import ConfigActions from '../modules/control/config-actions.js';
+import ReceiverActions from '../modules/control/receiver-actions.js';
+import Receiver from '../modules/receiver/index.js';
+import StatusLog from '../modules/status-log.js';
+import LogActions from '../modules/control/log-actions.js';
 
-class App {
+export default class App {
 	running = false;
 
 	config: ConfigManager;
 	database: Database;
 	eventStore: IEventStore;
 	graph: Graph;
+	relay: NostrRelay;
 	receiver: Receiver;
-	control: Control;
+	control: ControlApi;
+	statusLog = new StatusLog();
 
 	blobMetadata: IBlobMetadataStore;
 	blobStorage: LocalStorage;
@@ -45,30 +51,37 @@ class App {
 		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this.graph);
 
-		// API for controlling the node by proxy - create config
-		// file in the db directory unless otherwise specified
-		this.control = new Control(this, {
-			controlAuth: (auth) => {
-				return auth === AUTH;
-			},
-			//configPath: process.env.CONFIG_PATH || path.join(this.database.config.directory, 'node.json')
-			//configPath: '/Users/sbowman/Library/Application Support/satellite-electron/config.json',
+		// update the receiver options when the config changes
+		this.config.on('config:updated', (config) => {
+			this.receiver.pubkeys.clear();
+			this.receiver.explicitRelays.clear();
+
+			if (config.owner) this.receiver.pubkeys.add(config.owner);
+			for (const pubkey of config.pubkeys) this.receiver.pubkeys.add(pubkey);
+
+			for (const relay of config.relays) this.receiver.explicitRelays.add(relay.url);
+
+			this.receiver.cacheLevel = config.cacheLevel;
 		});
+
+		// API for controlling the node
+		this.control = new ControlApi(this, AUTH);
+		this.control.registerHandler(new ConfigActions(this));
+		this.control.registerHandler(new ReceiverActions(this));
+		this.control.registerHandler(new LogActions(this));
+
+		if (process.send) this.control.attachToProcess(process);
 
 		this.blobMetadata = new BlossomSQLite(this.database.db);
 		this.blobStorage = new LocalStorage(path.join(DATA_PATH, 'blobs'));
 		this.blobDownloader = new BlobDownloader(this.blobStorage, this.blobMetadata);
 
-		// Handle database status reports
-		this.database.on('status', (data) => {
-			// NOTE: this is missing for some reason, Im not sure what it dose
-			// this.control.handleDatabaseStatus(data);
-		});
-
 		// Handle relay status reports
 		this.receiver.on('relay:status', (data) => {
-			this.control.handleRelayStatus(data);
+			// this.control.handleRelayStatus(data);
 		});
+		this.receiver.on('started', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER LISTENING'));
+		this.receiver.on('stopped', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER PAUSED'));
 
 		this.receiver.on('event:received', (event) => {
 			// Pass received events to the relay
@@ -82,7 +95,24 @@ class App {
 
 		// Handle new events being saved
 		this.eventStore.on('event:inserted', (event) => {
-			this.control.handleInserted(event);
+			// this.control.handleInserted(event);
+		});
+
+		this.relay = new NostrRelay(this.eventStore);
+		this.relay.sendChallenge = true;
+		this.relay.requireRelayInAuth = false;
+
+		// only allow the owner to NIP-42 authenticate with the relay
+		this.relay.checkAuth = (ws, auth) => {
+			if (auth.pubkey !== this.config.config.owner) return 'Pubkey dose not match owner';
+			return true;
+		};
+
+		// when the owner to NIP-42 authenticates with the relay pass it along to the control
+		this.relay.on('socket:auth', (ws, auth) => {
+			if (auth.pubkey === this.config.config.owner) {
+				this.control.authenticatedConnections.add(ws);
+			}
 		});
 	}
 
@@ -96,7 +126,7 @@ class App {
 		}
 
 		// Set initial stats for the database
-		this.control.updateDatabaseStatus();
+		// this.control.updateDatabaseStatus();
 
 		this.tick();
 	}
@@ -109,10 +139,9 @@ class App {
 
 	stop() {
 		this.running = false;
-		this.database.stop();
-		this.receiver.stop();
-		this.control.stop();
+		this.relay.stop();
+		this.database.destroy();
+		this.receiver.destroy();
+		// this.control.stop();
 	}
 }
-
-export default App;

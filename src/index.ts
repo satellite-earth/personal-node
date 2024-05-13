@@ -5,7 +5,7 @@ import path from 'path';
 import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
 import { mkdirp } from 'mkdirp';
-import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
+import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
@@ -31,34 +31,15 @@ terminateConnectionsInterval(wss, 30000);
 
 await mkdirp(DATA_PATH);
 const app = new App(DATA_PATH);
-
-app.control.attachToServer(wss);
-
 const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
-const relay = new NostrRelay(app.eventStore);
-relay.sendChallenge = true;
-relay.requireRelayInAuth = false;
-
-// only allow the owner to NIP-42 authenticate with the relay
-relay.checkAuth = (ws, auth) => {
-	if (auth.pubkey !== app.config.config.owner) return 'Pubkey dose not match owner';
-	return true;
-};
-
-// when the owner authenticates add the socket to the list of authorized connections for control api
-relay.on('socket:auth', (ws, auth) => {
-	if (auth.pubkey === app.config.config.owner) {
-		app.control.authorizedConnections.add(ws);
-	}
-});
-
+app.control.attachToServer(wss);
 wss.on('connection', async (ws, req) => {
-	if (req.url === '/') return relay.handleConnection(ws, req);
+	if (req.url === '/') return app.relay.handleConnection(ws, req);
 
 	try {
 		const handled = communityMultiplexer.handleConnection(ws, req);
-		if (!handled) relay.handleConnection(ws, req);
+		if (!handled) app.relay.handleConnection(ws, req);
 	} catch (e) {
 		console.log('Failed to handle community connection');
 		console.log(e);
@@ -107,7 +88,6 @@ async function shutdown() {
 	logger('shutting down');
 
 	app.stop();
-	relay.stop();
 	communityMultiplexer.stop();
 	server.close();
 

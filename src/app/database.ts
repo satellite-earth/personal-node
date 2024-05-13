@@ -4,7 +4,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 
-import { USE_PREBUILT_SQLITE_BINDINGS } from '../../../env.js';
+import { USE_PREBUILT_SQLITE_BINDINGS } from '../env.js';
+import { writeJsonl } from '../helpers/json.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,7 +35,7 @@ export default class LocalDatabase extends EventEmitter {
 			// Optionally use native bindings indicated by environment
 			nativeBinding: USE_PREBUILT_SQLITE_BINDINGS
 				? path.join(
-						path.join(__dirname, '../../../../lib/bin'),
+						path.join(__dirname, '../../lib/bin'),
 						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`,
 					)
 				: undefined,
@@ -85,7 +86,7 @@ export default class LocalDatabase extends EventEmitter {
 		return sum;
 	}
 
-	stop() {
+	destroy() {
 		this.removeAllListeners();
 	}
 }
