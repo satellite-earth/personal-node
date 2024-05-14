@@ -3,16 +3,22 @@ import { ReceiverMessage, ReceiverResponse } from '@satellite-earth/core/types/c
 
 import type App from '../../app/index.js';
 import { type ControlMessageHandler } from './control-api.js';
-import { ReceiverStatus } from '../receiver/index.js';
 
 export default class ReceiverActions implements ControlMessageHandler {
 	app: App;
 	name = 'RECEIVER';
 
+	private subscribed = new Set<WebSocket | NodeJS.Process>();
+
 	constructor(app: App) {
 		this.app = app;
-	}
 
+		this.app.receiver.on('status:changed', (status) => {
+			for (const sock of this.subscribed) {
+				this.send(sock, ['CONTROL', 'RECEIVER', 'STATUS', status]);
+			}
+		});
+	}
 	handleMessage(sock: WebSocket | NodeJS.Process, message: ReceiverMessage): boolean {
 		const action = message[2];
 		switch (action) {
@@ -25,9 +31,13 @@ export default class ReceiverActions implements ControlMessageHandler {
 				return true;
 
 			case 'SUBSCRIBE':
-				const listener = (status: ReceiverStatus) => this.send(sock, ['CONTROL', 'RECEIVER', 'STATUS', status]);
-				this.app.receiver.on('status:changed', listener);
-				sock.once('close', () => this.app.receiver.off('status:changed', listener));
+				this.subscribed.add(sock);
+				sock.once('close', () => this.subscribed.delete(sock));
+				this.send(sock, ['CONTROL', 'RECEIVER', 'STATUS', this.app.receiver.status]);
+				return true;
+
+			case 'UNSUBSCRIBE':
+				this.subscribed.delete(sock);
 				return true;
 
 			case 'STATUS':

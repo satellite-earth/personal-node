@@ -37,6 +37,7 @@ export default class DatabaseActions implements ControlMessageHandler {
 			case 'SUBSCRIBE':
 				this.subscribed.add(sock);
 				sock.once('close', () => this.subscribed.delete(sock));
+				this.send(sock, ['CONTROL', 'DATABASE', 'STATS', this.getStats()]);
 				return true;
 
 			case 'UNSUBSCRIBE':

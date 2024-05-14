@@ -67,7 +67,6 @@ const writeJsonl = (
 					// Compress using ZSTD
 					await CompressZSTD({
 						level: params.compressionLevel,
-						//binaryPath: '/Users/sbowman/Devops/repos/satellite-node/satellite-electron/bin/zstd',
 						outputPath,
 						inputPath,
 					});

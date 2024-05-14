@@ -50,6 +50,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 	}
 
 	start() {
+		if (this.status.active) return;
 		this.log('started', this.pubkeys, this.explicitRelays, this.cacheLevel);
 
 		this.status.active = true;
@@ -305,6 +306,8 @@ export default class Receiver extends EventEmitter<EventMap> {
 
 	/** stop receiving events and disconnect from all relays */
 	stop() {
+		if (!this.status.active) return;
+
 		this.status.active = false;
 
 		for (let key of Object.keys(this.remote)) {

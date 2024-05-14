@@ -33,9 +33,9 @@ export default class LogActions implements ControlMessageHandler {
 				this.subscribed.add(sock);
 				sock.once('close', () => this.subscribed.delete(sock));
 
-				// send last 50 lines
-				for (let i = 0; i < 50 && i < this.app.statusLog.lines.length; i++) {
-					this.send(sock, ['CONTROL', 'LOG', 'LINE', this.app.statusLog.lines[i]]);
+				// send all lines
+				for (const line of this.app.statusLog.lines) {
+					this.send(sock, ['CONTROL', 'LOG', 'LINE', line]);
 				}
 				return true;
 

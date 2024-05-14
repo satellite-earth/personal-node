@@ -14,6 +14,9 @@ import ReceiverActions from '../modules/control/receiver-actions.js';
 import Receiver from '../modules/receiver/index.js';
 import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
+import DatabaseActions from '../modules/control/database-actions.js';
+import { formatPubkey } from '../helpers/pubkey.js';
+import { NostrEvent } from 'nostr-tools';
 
 export default class App {
 	running = false;
@@ -69,6 +72,7 @@ export default class App {
 		this.control.registerHandler(new ConfigActions(this));
 		this.control.registerHandler(new ReceiverActions(this));
 		this.control.registerHandler(new LogActions(this));
+		this.control.registerHandler(new DatabaseActions(this));
 
 		if (process.send) this.control.attachToProcess(process);
 
@@ -91,6 +95,9 @@ export default class App {
 			if (event.pubkey === this.config.config.owner) {
 				this.blobDownloader.queueBlobsFromEventContent(event);
 			}
+
+			// log event in status log
+			this.logInsertedEvent(event);
 		});
 
 		// Handle new events being saved
@@ -113,6 +120,22 @@ export default class App {
 			if (auth.pubkey === this.config.config.owner) {
 				this.control.authenticatedConnections.add(ws);
 			}
+		});
+	}
+
+	private logInsertedEvent(event: NostrEvent) {
+		const profile = this.graph.getProfile(event.pubkey);
+		const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
+
+		let preview;
+
+		// Preview kinds 1 and 7, truncating at 256 chars
+		if (event.kind === 1 || event.kind === 7) {
+			preview = event.content.length > 256 ? event.content.slice(0, 256) : event.content;
+		}
+
+		this.statusLog.log({
+			text: `[EVENT] KIND ${event.kind} FROM ${name}` + (preview ? ` "${preview}"` : ''),
 		});
 	}
 

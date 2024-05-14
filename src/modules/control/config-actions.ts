@@ -7,7 +7,7 @@ import { type ControlMessageHandler } from './control-api.js';
 /** handles ['CONTROL', 'CONFIG', ...] messages */
 export default class ConfigActions implements ControlMessageHandler {
 	app: App;
-	name = 'CONTROL';
+	name = 'CONFIG';
 
 	private subscribed = new Set<WebSocket | NodeJS.Process>();
 
@@ -17,7 +17,7 @@ export default class ConfigActions implements ControlMessageHandler {
 		// when config changes send it to the subscribed sockets
 		this.app.config.on('config:updated', (config) => {
 			for (const sock of this.subscribed) {
-				this.send(sock, ['CONTROL', 'CONFIG', config]);
+				this.send(sock, ['CONTROL', 'CONFIG', 'CHANGED', config]);
 			}
 		});
 	}
