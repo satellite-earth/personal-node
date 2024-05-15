@@ -53,19 +53,10 @@ export default class App {
 
 		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this.graph);
+		this.updateReceiverFromConfig();
 
 		// update the receiver options when the config changes
-		this.config.on('config:updated', (config) => {
-			this.receiver.pubkeys.clear();
-			this.receiver.explicitRelays.clear();
-
-			if (config.owner) this.receiver.pubkeys.add(config.owner);
-			for (const pubkey of config.pubkeys) this.receiver.pubkeys.add(pubkey);
-
-			for (const relay of config.relays) this.receiver.explicitRelays.add(relay.url);
-
-			this.receiver.cacheLevel = config.cacheLevel;
-		});
+		this.config.on('config:updated', this.updateReceiverFromConfig.bind(this));
 
 		// API for controlling the node
 		this.control = new ControlApi(this, AUTH);
@@ -81,9 +72,6 @@ export default class App {
 		this.blobDownloader = new BlobDownloader(this.blobStorage, this.blobMetadata);
 
 		// Handle relay status reports
-		this.receiver.on('relay:status', (data) => {
-			// this.control.handleRelayStatus(data);
-		});
 		this.receiver.on('started', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER LISTENING'));
 		this.receiver.on('stopped', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER PAUSED'));
 
@@ -123,6 +111,18 @@ export default class App {
 		});
 	}
 
+	private updateReceiverFromConfig(config = this.config.config) {
+		this.receiver.pubkeys.clear();
+		this.receiver.explicitRelays.clear();
+
+		if (config.owner) this.receiver.pubkeys.add(config.owner);
+		for (const pubkey of config.pubkeys) this.receiver.pubkeys.add(pubkey);
+
+		for (const relay of config.relays) this.receiver.explicitRelays.add(relay.url);
+
+		this.receiver.cacheLevel = config.cacheLevel;
+	}
+
 	private logInsertedEvent(event: NostrEvent) {
 		const profile = this.graph.getProfile(event.pubkey);
 		const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
@@ -134,9 +134,7 @@ export default class App {
 			preview = event.content.length > 256 ? event.content.slice(0, 256) : event.content;
 		}
 
-		this.statusLog.log({
-			text: `[EVENT] KIND ${event.kind} FROM ${name}` + (preview ? ` "${preview}"` : ''),
-		});
+		this.statusLog.log(`[EVENT] KIND ${event.kind} FROM ${name}` + (preview ? ` "${preview}"` : ''));
 	}
 
 	start() {

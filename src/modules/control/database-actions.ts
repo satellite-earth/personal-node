@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import os from 'node:os';
-import { DatabaseMessage, DatabaseResponse } from '@satellite-earth/core/types/control-api.js';
+import { DatabaseMessage, DatabaseResponse, DatabaseStats } from '@satellite-earth/core/types/control-api.js';
 
 import App from '../../app/index.js';
 import { ControlMessageHandler } from './control-api.js';
@@ -16,11 +16,15 @@ export default class DatabaseActions implements ControlMessageHandler {
 		this.app = app;
 
 		// update all subscribed sockets every 5 seconds
+		let last: DatabaseStats | undefined = undefined;
 		setInterval(() => {
 			const stats = this.getStats();
-			for (const sock of this.subscribed) {
-				this.send(sock, ['CONTROL', 'DATABASE', 'STATS', stats]);
+			if (stats.count !== last?.count || stats.size !== last.size) {
+				for (const sock of this.subscribed) {
+					this.send(sock, ['CONTROL', 'DATABASE', 'STATS', stats]);
+				}
 			}
+			last = stats;
 		}, 5_000);
 	}
 

@@ -4,6 +4,8 @@ import { LogMessage, LogResponse } from '@satellite-earth/core/types/control-api
 import { ControlMessageHandler } from './control-api.js';
 import type App from '../../app/index.js';
 
+const INITIAL_LOG_LINES = 200;
+
 export default class LogActions implements ControlMessageHandler {
 	app: App;
 	name = 'LOG';
@@ -34,8 +36,11 @@ export default class LogActions implements ControlMessageHandler {
 				sock.once('close', () => this.subscribed.delete(sock));
 
 				// send all lines
+				let i = 0;
 				for (const line of this.app.statusLog.lines) {
+					if (i >= INITIAL_LOG_LINES) break;
 					this.send(sock, ['CONTROL', 'LOG', 'LINE', line]);
+					i++;
 				}
 				return true;
 

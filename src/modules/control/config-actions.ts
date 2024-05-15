@@ -28,6 +28,7 @@ export default class ConfigActions implements ControlMessageHandler {
 			case 'SUBSCRIBE':
 				this.subscribed.add(sock);
 				sock.once('close', () => this.subscribed.delete(sock));
+				this.send(sock, ['CONTROL', 'CONFIG', 'CHANGED', this.app.config.config]);
 				return true;
 
 			case 'SET':

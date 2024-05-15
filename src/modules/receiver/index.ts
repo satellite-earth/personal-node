@@ -21,7 +21,6 @@ type EventMap = {
 	stopped: [Receiver];
 	'event:received': [NostrEvent];
 	'status:changed': [ReceiverStatus];
-	'relay:status': [{ status: 'connected' | 'disconnected'; relay: RelayScrapper }];
 };
 
 export default class Receiver extends EventEmitter<EventMap> {
@@ -132,11 +131,6 @@ export default class Receiver extends EventEmitter<EventMap> {
 			this.status.relays[relay.url] = { connected: false };
 			this.emit('status:changed', this.status);
 
-			this.emit('relay:status', {
-				status: 'disconnected',
-				relay,
-			});
-
 			if (this.remote[relay.url]) {
 				clearTimeout(this.remote[relay.url].reconnecting);
 
@@ -166,11 +160,6 @@ export default class Receiver extends EventEmitter<EventMap> {
 			// TODO: relay should be in control of "status" object
 			this.status.relays[relay.url] = { connected: true };
 			this.emit('status:changed', this.status);
-
-			this.emit('relay:status', {
-				status: 'connected',
-				relay,
-			});
 
 			const primaryReference = () => {
 				const primaryReferenceFilters: Filter[] = [
