@@ -79,5 +79,3 @@ Once your env is set up
 `npm run dev`
 
 If successful you should see a message like `satellite server running on PORT`
-
-You can now add your local relay to other nostr web apps or manage backups using [dashboard-ui](https://github.com/satellite-earth/dashboard-ui)

@@ -65,9 +65,9 @@ expressServer.get('/', (req, res, next) => {
 	next();
 });
 
-// host the dashboard-ui for the node
+// host the community-ui for the node
 const dashboardDir = path.dirname(
-	importMetaResolve('@satellite-earth/dashboard-ui', import.meta.url).replace('file://', ''),
+	importMetaResolve('@satellite-earth/community-ui', import.meta.url).replace('file://', ''),
 );
 expressServer.use(express.static(dashboardDir));
 
