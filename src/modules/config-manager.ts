@@ -43,7 +43,7 @@ export const defaultConfig: AppConfig = {
 
 type EventMap = {
 	'config:loaded': [AppConfig];
-	'config:updated': [AppConfig];
+	'config:updated': [AppConfig, string, any];
 	'config:saved': [AppConfig];
 };
 
@@ -64,7 +64,8 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 			// @ts-expect-error
 			this.config[field] = value;
 
-			this.emit('config:updated', this.config);
+			this.emit('config:updated', this.config, field, value);
+			this.saveConfig();
 		}
 	}
 
@@ -91,12 +92,6 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 
 			return this.config;
 		}
-	}
-
-	updateConfig(config: Partial<AppConfig>) {
-		Object.assign(this.config, config);
-		this.emit('config:updated', this.config);
-		this.saveConfig();
 	}
 
 	saveConfig() {

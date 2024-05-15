@@ -56,7 +56,10 @@ export default class App {
 		this.updateReceiverFromConfig();
 
 		// update the receiver options when the config changes
-		this.config.on('config:updated', this.updateReceiverFromConfig.bind(this));
+		this.config.on('config:updated', (config, field) => {
+			this.updateReceiverFromConfig(config);
+			this.statusLog.log(`[CONFIG] set ${field}`);
+		});
 
 		// API for controlling the node
 		this.control = new ControlApi(this, AUTH);
