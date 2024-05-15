@@ -5,10 +5,11 @@ import path from 'path';
 import { createServer } from 'http';
 import { useWebSocketImplementation } from 'nostr-tools';
 import { mkdirp } from 'mkdirp';
-import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
+import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
+import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
-import { PORT, DATA_PATH } from './env.js';
+import { PORT, DATA_PATH, AUTH } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -30,34 +31,15 @@ terminateConnectionsInterval(wss, 30000);
 
 await mkdirp(DATA_PATH);
 const app = new App(DATA_PATH);
-
-app.control.attachToServer(wss);
-
 const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
-const relay = new NostrRelay(app.eventStore);
-relay.sendChallenge = true;
-relay.requireRelayInAuth = false;
-
-// only allow the owner to NIP-42 authenticate with the relay
-relay.checkAuth = (ws, auth) => {
-	if (auth.pubkey !== app.config.config.owner) return 'Pubkey dose not match owner';
-	return true;
-};
-
-// when the owner authenticates add the socket to the list of authorized connections for control api
-relay.on('socket:auth', (ws, auth) => {
-	if (auth.pubkey === app.config.config.owner) {
-		app.control.authorizedConnections.add(ws);
-	}
-});
-
+app.control.attachToServer(wss);
 wss.on('connection', async (ws, req) => {
-	if (req.url === '/') return relay.handleConnection(ws, req);
+	if (req.url === '/') return app.relay.handleConnection(ws, req);
 
 	try {
 		const handled = communityMultiplexer.handleConnection(ws, req);
-		if (!handled) relay.handleConnection(ws, req);
+		if (!handled) app.relay.handleConnection(ws, req);
 	} catch (e) {
 		console.log('Failed to handle community connection');
 		console.log(e);
@@ -77,14 +59,16 @@ expressServer.use(blobServer.router);
 expressServer.get('/', (req, res, next) => {
 	if (!req.url.includes(`auth=`)) {
 		const params = new URLSearchParams();
-		params.set('auth', app.config.config.dashboardAuth);
+		params.set('auth', AUTH);
 		res.redirect('/?' + params.toString());
 	}
 	next();
 });
 
 // host the dashboard-ui for the node
-const dashboardDir = path.dirname(import.meta.resolve('@satellite-earth/dashboard-ui').replace('file://', ''));
+const dashboardDir = path.dirname(
+	importMetaResolve('@satellite-earth/dashboard-ui', import.meta.url).replace('file://', ''),
+);
 expressServer.use(express.static(dashboardDir));
 
 server.on('request', expressServer);
@@ -94,7 +78,9 @@ app.start();
 // Listen for http connections
 server.listen(PORT, () => {
 	logger(`server running on`, PORT);
-	logger('AUTH', app.config.config.dashboardAuth);
+	logger('AUTH', AUTH);
+
+	if (process.send) process.send({ type: 'RELAY_READY' });
 });
 
 // shutdown process
@@ -102,7 +88,6 @@ async function shutdown() {
 	logger('shutting down');
 
 	app.stop();
-	relay.stop();
 	communityMultiplexer.stop();
 	server.close();
 

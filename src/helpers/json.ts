@@ -8,12 +8,6 @@ import { nip19 } from 'nostr-tools';
 // @ts-expect-error
 import ProcessStream from 'process-streams';
 
-const formatPubkey = (pubkey: string) => {
-	const npub = nip19.npubEncode(pubkey);
-
-	return `${npub.slice(0, 9)}...${npub.slice(-4)}`;
-};
-
 const loadJson = (params: { path: string }) => {
 	let object;
 
@@ -73,7 +67,6 @@ const writeJsonl = (
 					// Compress using ZSTD
 					await CompressZSTD({
 						level: params.compressionLevel,
-						//binaryPath: '/Users/sbowman/Devops/repos/satellite-node/satellite-electron/bin/zstd',
 						outputPath,
 						inputPath,
 					});
@@ -132,4 +125,4 @@ const CompressZSTD = (params: { outputPath: string; inputPath: string; level?: n
 	});
 };
 
-export { formatPubkey, loadJson, saveJson, writeJsonl };
+export { loadJson, saveJson, writeJsonl };

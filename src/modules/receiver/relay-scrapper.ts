@@ -2,6 +2,9 @@ import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { Filter, NostrEvent, verifyEvent } from 'nostr-tools';
 import { WebSocket } from 'ws';
+import { Debugger } from 'debug';
+
+import { logger } from '../../logger.js';
 
 function safeVerify(event: NostrEvent) {
 	try {
@@ -19,7 +22,8 @@ export type RelayOptions = {
 	skipVerification?: boolean;
 };
 
-export class Relay extends EventEmitter {
+export class RelayScrapper extends EventEmitter {
+	log: Debugger;
 	url: string;
 	ws?: WebSocket;
 
@@ -31,10 +35,9 @@ export class Relay extends EventEmitter {
 
 	constructor(url: string, seen: Set<string>, options: RelayOptions = {}) {
 		super();
+		this.log = logger.extend(url);
 		this.url = url;
-
 		this.seen = seen;
-
 		this.options = options;
 	}
 
@@ -42,28 +45,28 @@ export class Relay extends EventEmitter {
 		try {
 			this.ws = new WebSocket(this.url);
 		} catch (err) {
-			console.log('failed to open ws connection to ' + this.url);
+			this.log('failed to open ws connection to ' + this.url);
 			return;
 		}
 
 		if (!this.ws) {
-			console.log('Failed to create ws');
+			this.log('Failed to create ws');
 			return;
 		}
 
 		this.ws.on('open', () => {
-			console.log(this.url + ' connected');
+			this.log(this.url + ' connected');
 			this.connected = true;
 			this.emit('connect', this);
 		});
 
 		this.ws.on('error', (err) => {
-			console.log(this.url + ' errored: ' + err.message);
+			this.log(this.url + ' errored: ' + err.message);
 			//this.connected = false;
 		});
 
 		this.ws.on('close', () => {
-			console.log(this.url + ' closed');
+			this.log(this.url + ' closed');
 
 			this.connected = false;
 
@@ -107,7 +110,7 @@ export class Relay extends EventEmitter {
 					}
 				}
 			} catch (err) {
-				console.log(err);
+				this.log(err);
 			}
 		};
 	}
@@ -119,7 +122,7 @@ export class Relay extends EventEmitter {
 
 				this.emit('disconnect', this);
 			} catch (err) {
-				console.log(err);
+				this.log(err);
 			}
 		}
 	}
@@ -157,7 +160,7 @@ export class Relay extends EventEmitter {
 		try {
 			if (this.ws) this.ws.send(JSON.stringify(data));
 		} catch (err) {
-			console.log('send error', err);
+			this.log('send error', err);
 		}
 	}
 }

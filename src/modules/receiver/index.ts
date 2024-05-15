@@ -3,22 +3,44 @@ import { Filter, NostrEvent } from 'nostr-tools';
 
 import type Graph from '../graph/index.js';
 import { type Node } from '../graph/index.js';
-import { Relay } from './relay.js';
+import { RelayScrapper } from './relay-scrapper.js';
+import { logger } from '../../logger.js';
+
+export type ReceiverStatus = {
+	active: boolean;
+	relays: Record<
+		string,
+		{
+			connected: boolean;
+		}
+	>;
+};
 
 type EventMap = {
+	started: [Receiver];
+	stopped: [Receiver];
 	'event:received': [NostrEvent];
-	'relay:status': [{ status: 'connected' | 'disconnected'; relay: Relay }];
+	'status:changed': [ReceiverStatus];
 };
 
 export default class Receiver extends EventEmitter<EventMap> {
 	graph: Graph;
+	log = logger.extend('Receiver');
 
-	listening = false;
+	/** The pubkeys to start download events for */
+	pubkeys = new Set<string>();
+	/** always request event from these relays */
+	explicitRelays = new Set<string>();
+	/** The cache level for the pubkeys */
+	cacheLevel = 2;
+
+	status: ReceiverStatus = { active: false, relays: {} };
+	scrappers = new Map<string, RelayScrapper>();
+
 	seen = new Set<string>();
-
 	remote: Record<
 		string,
-		{ relay: Relay; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
+		{ relay: RelayScrapper; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
 	> = {};
 
 	constructor(graph: Graph) {
@@ -26,10 +48,11 @@ export default class Receiver extends EventEmitter<EventMap> {
 		this.graph = graph;
 	}
 
-	listen(params: { pubkeys: string[]; cacheLevel: 1 | 2 | 3; relays: { url: string }[] }) {
-		console.log('called listen in receiver instance', params);
+	start() {
+		if (this.status.active) return;
+		this.log('started', this.pubkeys, this.explicitRelays, this.cacheLevel);
 
-		this.listening = true;
+		this.status.active = true;
 
 		for (let url of Object.keys(this.remote)) {
 			// @ts-expect-error
@@ -65,7 +88,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 			if (event.kind >= 30000 && event.kind < 40000) {
 				let relevant;
 
-				if (params.pubkeys.indexOf(event.pubkey) !== -1) {
+				if (this.pubkeys.has(event.pubkey)) {
 					relevant = true;
 				} else if (event.kind === 34550) {
 					/*
@@ -74,7 +97,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					*/
 
 					for (let tag of event.tags) {
-						if (tag[0] === 'p' && params.pubkeys.indexOf(tag[1]) !== -1) {
+						if (tag[0] === 'p' && this.pubkeys.has(tag[1])) {
 							relevant = true; // Root user is mod
 							break;
 						}
@@ -103,18 +126,17 @@ export default class Receiver extends EventEmitter<EventMap> {
 		};
 
 		// Handle closed connection to relay
-		const handleDisconnect = (relay: Relay) => {
-			this.emit('relay:status', {
-				status: 'disconnected',
-				relay,
-			});
+		const handleDisconnect = (relay: RelayScrapper) => {
+			// TODO: relay should be in control of "status" object
+			this.status.relays[relay.url] = { connected: false };
+			this.emit('status:changed', this.status);
 
 			if (this.remote[relay.url]) {
 				clearTimeout(this.remote[relay.url].reconnecting);
 
 				// If relay disconnected unexpectedly, automatically
 				// attempt reconnect with exponential backoff
-				if (this.listening) {
+				if (this.status.active) {
 					this.remote[relay.url].reconnecting = setTimeout(() => {
 						console.log(
 							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs',
@@ -128,33 +150,32 @@ export default class Receiver extends EventEmitter<EventMap> {
 			}
 		};
 
-		const handleConnect = (relay: Relay) => {
+		const handleConnect = (relay: RelayScrapper) => {
 			// On successful connect, reset reconnect state
 			if (this.remote[relay.url]) {
 				clearTimeout(this.remote[relay.url].reconnecting);
 				this.remote[relay.url].reconnectDelay = 500;
 			}
 
-			this.emit('relay:status', {
-				status: 'connected',
-				relay,
-			});
+			// TODO: relay should be in control of "status" object
+			this.status.relays[relay.url] = { connected: true };
+			this.emit('status:changed', this.status);
 
 			const primaryReference = () => {
 				const primaryReferenceFilters: Filter[] = [
 					{
 						// DM's for you
-						'#p': params.pubkeys,
+						'#p': Array.from(this.pubkeys),
 						kinds: [4],
 					},
 					{
 						// Text notes, reposts, likes, zaps for you
-						'#p': params.pubkeys,
+						'#p': Array.from(this.pubkeys),
 						kinds: [1, 6, 7, 16, 9735],
 					},
 					{
 						// Text notes from people your following following
-						authors: filterNodes(this.graph.getNodes(params.pubkeys), 2),
+						authors: filterNodes(this.graph.getNodes(Array.from(this.pubkeys)), 2),
 						kinds: [1],
 					},
 				];
@@ -180,11 +201,11 @@ export default class Receiver extends EventEmitter<EventMap> {
 				relay.subscribe(
 					[
 						{
-							authors: filterNodes(this.graph.getNodes(params.pubkeys), 1),
+							authors: filterNodes(this.graph.getNodes(Array.from(this.pubkeys)), 1),
 						},
 					],
 					{
-						oneose: params.cacheLevel > 2 ? primaryReference : undefined,
+						oneose: this.cacheLevel > 2 ? primaryReference : undefined,
 					},
 				);
 			};
@@ -194,11 +215,11 @@ export default class Receiver extends EventEmitter<EventMap> {
 				relay.subscribe(
 					[
 						{
-							authors: params.pubkeys,
+							authors: Array.from(this.pubkeys),
 						},
 					],
 					{
-						oneose: params.cacheLevel > 1 ? secondaryData : undefined,
+						oneose: this.cacheLevel > 1 ? secondaryData : undefined,
 					},
 				);
 			};
@@ -208,7 +229,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 				relay.subscribe(
 					[
 						{
-							authors: filterNodes(this.graph.getNodes(params.pubkeys), 2),
+							authors: filterNodes(this.graph.getNodes(Array.from(this.pubkeys)), 2),
 							kinds: [0],
 						},
 					],
@@ -219,7 +240,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 			};
 
 			const secondaryMetadata = () => {
-				const following = filterNodes(this.graph.getNodes(params.pubkeys), 1);
+				const following = filterNodes(this.graph.getNodes(Array.from(this.pubkeys)), 1);
 
 				// Secondary metadata
 				relay.subscribe(
@@ -230,7 +251,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 						},
 					],
 					{
-						oneose: params.cacheLevel > 2 ? tertiaryMetadata : secondaryData,
+						oneose: this.cacheLevel > 2 ? tertiaryMetadata : secondaryData,
 					},
 				);
 			};
@@ -239,23 +260,23 @@ export default class Receiver extends EventEmitter<EventMap> {
 			relay.subscribe(
 				[
 					{
-						authors: params.pubkeys,
+						authors: Array.from(this.pubkeys),
 						kinds: [0, 3],
 					},
 				],
 				{
-					oneose: params.cacheLevel === 1 ? primaryData : secondaryMetadata,
+					oneose: this.cacheLevel === 1 ? primaryData : secondaryMetadata,
 				},
 			);
 		};
 
 		// Connect to each relay and set up subscriptions
-		for (let item of params.relays) {
-			const relay = new Relay(item.url, this.seen, {
+		for (let url of this.explicitRelays) {
+			const relay = new RelayScrapper(url, this.seen, {
 				skipVerification: false,
 			});
 
-			this.remote[item.url] = {
+			this.remote[url] = {
 				lastReconnectAttempt: 0,
 				reconnectDelay: 500,
 				relay,
@@ -267,10 +288,16 @@ export default class Receiver extends EventEmitter<EventMap> {
 
 			relay.connect();
 		}
+
+		this.emit('status:changed', this.status);
+		this.emit('started', this);
 	}
 
-	unlisten() {
-		this.listening = false;
+	/** stop receiving events and disconnect from all relays */
+	stop() {
+		if (!this.status.active) return;
+
+		this.status.active = false;
 
 		for (let key of Object.keys(this.remote)) {
 			clearTimeout(this.remote[key].reconnecting);
@@ -281,10 +308,12 @@ export default class Receiver extends EventEmitter<EventMap> {
 		}
 
 		this.remote = {};
+		this.emit('status:changed', this.status);
+		this.emit('stopped', this);
 	}
 
-	stop() {
-		this.unlisten();
+	destroy() {
+		this.stop();
 
 		this.removeAllListeners();
 	}

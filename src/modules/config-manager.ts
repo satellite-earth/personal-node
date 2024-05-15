@@ -1,6 +1,5 @@
 import fs from 'fs';
 import { EventEmitter } from 'events';
-import { randomBytes } from 'crypto';
 
 import { OWNER_PUBKEY } from '../env.js';
 import { logger } from '../logger.js';
@@ -10,15 +9,41 @@ export type AppConfig = {
 	pubkeys: string[];
 	relays: { url: string }[];
 
-	dashboardAuth: string;
 	cacheLevel: 1 | 2 | 3;
+
+	/**
+	 * Whether the node should require NIP-42 auth to read
+	 * Desktop: false by default
+	 * Hosted: true by default
+	 */
+	requireReadAuth: boolean;
+
+	/**
+	 * various address that this node can be reached from
+	 * Desktop: default to empty
+	 * Hosted: default to public facing URLs
+	 */
+	publicAddresses: string[];
+
+	/** @deprecated this should probably be moved to desktop */
 	autoListen: boolean;
+	/** @deprecated this should always be enabled */
 	logsEnabled: boolean;
+};
+
+export const defaultConfig: AppConfig = {
+	pubkeys: [],
+	relays: [],
+	cacheLevel: 2,
+	autoListen: false,
+	logsEnabled: true,
+	requireReadAuth: false,
+	publicAddresses: [],
 };
 
 type EventMap = {
 	'config:loaded': [AppConfig];
-	'config:updated': [AppConfig];
+	'config:updated': [AppConfig, string, any];
 	'config:saved': [AppConfig];
 };
 
@@ -34,20 +59,22 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 		this.config = this.loadConfig();
 	}
 
+	setField(field: keyof AppConfig, value: any) {
+		if (Reflect.has(this.config, field)) {
+			// @ts-expect-error
+			this.config[field] = value;
+
+			this.emit('config:updated', this.config, field, value);
+			this.saveConfig();
+		}
+	}
+
 	loadConfig() {
 		try {
 			const str = fs.readFileSync(this.path, { encoding: 'utf-8' });
-			const config = JSON.parse(str) as AppConfig;
+			const config = { ...defaultConfig, ...(JSON.parse(str) as AppConfig) };
 
 			if (!config.owner) throw new Error('Missing owner');
-
-			// set defaults if they are not already set
-			if (config.pubkeys === undefined) config.pubkeys = [];
-			if (config.relays === undefined) config.relays = [];
-			if (config.cacheLevel === undefined) config.cacheLevel = 2;
-			if (config.autoListen === undefined) config.autoListen = false;
-			if (config.logsEnabled === undefined) config.logsEnabled = true;
-			if (config.dashboardAuth === undefined) config.dashboardAuth = randomBytes(20).toString('hex');
 
 			this.config = config;
 
@@ -56,13 +83,8 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 			return config;
 		} catch (e) {
 			this.config = {
+				...defaultConfig,
 				owner: OWNER_PUBKEY,
-				pubkeys: [],
-				relays: [],
-				cacheLevel: 2,
-				autoListen: false,
-				logsEnabled: true,
-				dashboardAuth: randomBytes(20).toString('hex'),
 			};
 
 			this.log('Creating default config', this.config);
@@ -70,12 +92,6 @@ export default class ConfigManager extends EventEmitter<EventMap> {
 
 			return this.config;
 		}
-	}
-
-	updateConfig(config: Partial<AppConfig>) {
-		Object.assign(this.config, config);
-		this.emit('config:updated', this.config);
-		this.saveConfig();
 	}
 
 	saveConfig() {
