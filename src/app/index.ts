@@ -82,10 +82,11 @@ export default class App {
 			// Pass received events to the relay
 			this.eventStore.addEvent(event);
 
+			// NOTE: temporarily disable blob downloads
 			// Pass the event to the blob downloader
-			if (event.pubkey === this.config.config.owner) {
-				this.blobDownloader.queueBlobsFromEventContent(event);
-			}
+			// if (event.pubkey === this.config.config.owner) {
+			// 	this.blobDownloader.queueBlobsFromEventContent(event);
+			// }
 
 			// log event in status log
 			this.logInsertedEvent(event);

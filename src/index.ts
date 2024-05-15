@@ -55,16 +55,6 @@ const expressServer = express();
 
 expressServer.use(blobServer.router);
 
-// redirect to dashboard ui when root page is loaded
-expressServer.get('/', (req, res, next) => {
-	if (!req.url.includes(`auth=`)) {
-		const params = new URLSearchParams();
-		params.set('auth', AUTH);
-		res.redirect('/?' + params.toString());
-	}
-	next();
-});
-
 // host the community-ui for the node
 const dashboardDir = path.dirname(
 	importMetaResolve('@satellite-earth/community-ui', import.meta.url).replace('file://', ''),

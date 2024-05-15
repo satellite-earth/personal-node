@@ -1,6 +1,6 @@
 {
 	"name": "@satellite-earth/private-node",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
 	"license": "MIT",
 	"author": {
