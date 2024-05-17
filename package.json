@@ -19,7 +19,7 @@
 		"start": "node .",
 		"dev": "nodemon --loader @swc-node/register/esm src/index.ts",
 		"build": "tsc",
-		"format": "prettier -w .",
+		"format": "prettier -w . --ignore-path .gitignore",
 		"test": "echo no tests"
 	},
 	"files": [
@@ -28,7 +28,7 @@
 	],
 	"bin": "dist/index.js",
 	"dependencies": {
-		"@satellite-earth/community-ui": "^0.2.0",
+		"@satellite-earth/web-ui": "^0.2.0",
 		"@satellite-earth/core": "^0.2.0",
 		"better-sqlite3": "^9.6.0",
 		"blossom-client-sdk": "^0.5.1",

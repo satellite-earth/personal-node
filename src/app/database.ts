@@ -35,8 +35,8 @@ export default class LocalDatabase extends EventEmitter {
 			nativeBinding: USE_PREBUILT_SQLITE_BINDINGS
 				? path.join(
 						path.join(__dirname, '../../lib/bin'),
-						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`,
-					)
+						`${process.arch === 'arm64' ? 'arm64' : 'x64'}/better_sqlite3.node`
+				  )
 				: undefined,
 		});
 

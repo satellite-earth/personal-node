@@ -27,7 +27,7 @@ declare module 'hyperdht' {
 			opts?: {
 				firewall?: (removePublicKey: Buffer, remoteHandshakePayload: any) => boolean;
 			},
-			onconnection?: (socket: NoiseStreamSocket) => void,
+			onconnection?: (socket: NoiseStreamSocket) => void
 		): Server;
 		destroy(opts?: { force: boolean }): Promise<void>;
 

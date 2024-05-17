@@ -124,7 +124,7 @@ export class BlobDownloader {
 			servers?: string[];
 			urls?: string[];
 		} = {},
-		override = false,
+		override = false
 	) {
 		let added = false;
 		let existing = this.queue.find((q) => q.sha256 === sha256);
@@ -179,7 +179,7 @@ export class BlobDownloader {
 
 	queueBlobsFromEventContent(event: NostrEvent) {
 		const matches = event.content.matchAll(
-			/https?:\/\/([a-zA-Z0-9\.\-]+\.[a-zA-Z]+)([\p{L}\p{N}\p{M}&\.-\/\?=#\-@%\+_,:!~*]*)/gu,
+			/https?:\/\/([a-zA-Z0-9\.\-]+\.[a-zA-Z]+)([\p{L}\p{N}\p{M}&\.-\/\?=#\-@%\+_,:!~*]*)/gu
 		);
 		if (!matches) return;
 

@@ -34,7 +34,7 @@ const saveJson = (data: any, params: { path: string }) => {
 
 const writeJsonl = (
 	jsonArray: any[],
-	params: { outputName: string; compress?: boolean; outputPath: string; compressionLevel?: number },
+	params: { outputName: string; compress?: boolean; outputPath: string; compressionLevel?: number }
 ) => {
 	return new Promise<void>((resolve, reject) => {
 		const filename = params.compress ? `${params.outputName}.temp.jsonl` : `${params.outputName}.jsonl`;

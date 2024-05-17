@@ -56,10 +56,11 @@ const expressServer = express();
 expressServer.use(blobServer.router);
 
 // host the community-ui for the node
-const dashboardDir = path.dirname(
-	importMetaResolve('@satellite-earth/community-ui', import.meta.url).replace('file://', ''),
-);
-expressServer.use(express.static(dashboardDir));
+const appDir = path.dirname(importMetaResolve('@satellite-earth/web-ui', import.meta.url).replace('file://', ''));
+expressServer.use(express.static(appDir));
+expressServer.get('*', (req, res) => {
+	res.sendFile(path.resolve(appDir, 'index.html'));
+});
 
 server.on('request', expressServer);
 

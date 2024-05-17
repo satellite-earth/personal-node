@@ -139,7 +139,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 				if (this.status.active) {
 					this.remote[relay.url].reconnecting = setTimeout(() => {
 						console.log(
-							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs',
+							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs'
 						);
 
 						relay.connect();
@@ -206,7 +206,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 2 ? primaryReference : undefined,
-					},
+					}
 				);
 			};
 
@@ -220,7 +220,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 1 ? secondaryData : undefined,
-					},
+					}
 				);
 			};
 
@@ -235,7 +235,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: primaryData,
-					},
+					}
 				);
 			};
 
@@ -252,7 +252,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 2 ? tertiaryMetadata : secondaryData,
-					},
+					}
 				);
 			};
 
@@ -266,7 +266,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 				],
 				{
 					oneose: this.cacheLevel === 1 ? primaryData : secondaryMetadata,
-				},
+				}
 			);
 		};
 

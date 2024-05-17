@@ -109,7 +109,7 @@ export class CommunityProxy {
 		const ids = RelayActions.handleDeleteEvent(
 			this.eventStore,
 			deleteEvent,
-			deleteEvent.pubkey === communityPubkey ? () => true : undefined,
+			deleteEvent.pubkey === communityPubkey ? () => true : undefined
 		);
 
 		if (ids.length) this.log(`Deleted`, ids.length, 'events');
