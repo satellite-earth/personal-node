@@ -5,7 +5,6 @@ import path from 'path';
 import fs from 'fs';
 
 import { USE_PREBUILT_SQLITE_BINDINGS } from '../env.js';
-import { writeJsonl } from '../helpers/json.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
