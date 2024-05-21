@@ -32,13 +32,16 @@ export class CommunityProxy {
 		this.eventStore.setup();
 		this.relay = new NostrRelay(this.eventStore);
 
-		this.relay.on('event:received', (event) => {
+		// handle incoming events and pass them to the upstream relay
+		this.relay.registerEventHandler(async (ctx, next) => {
 			// send event to upstream relay
 			if (this.upstream) {
-				this.log('Sending event to upstream', event.id);
-				this.upstream.publish(event);
-			}
+				const result = this.upstream.publish(ctx.event);
+				this.log('Sent event to upstream', ctx.event.id);
+				return result;
+			} else throw new Error('Not connected to upstream');
 		});
+
 		this.relay.on('subscription:created', (subscription, ws) => {
 			this.syncChannelsFromFilters(subscription.filters);
 		});
@@ -109,7 +112,7 @@ export class CommunityProxy {
 		const ids = RelayActions.handleDeleteEvent(
 			this.eventStore,
 			deleteEvent,
-			deleteEvent.pubkey === communityPubkey ? () => true : undefined
+			deleteEvent.pubkey === communityPubkey ? () => true : undefined,
 		);
 
 		if (ids.length) this.log(`Deleted`, ids.length, 'events');
