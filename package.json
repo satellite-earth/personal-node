@@ -1,5 +1,5 @@
 {
-	"name": "@satellite-earth/private-node",
+	"name": "@satellite-earth/personal-node",
 	"version": "0.2.2",
 	"description": "node is a project that runs as a node application anywhere, i.e. it's just a nodejs app that can run on your laptop or on a VPS in a datacenter, it doesn't matter",
 	"license": "MIT",
@@ -9,11 +9,21 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/satellite-earth/private-node.git"
+		"url": "git+https://github.com/satellite-earth/personal-node.git"
 	},
 	"main": "dist/index.js",
 	"type": "module",
 	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./app": {
+			"import": "./dist/app/index.js",
+			"types": "./dist/app/index.d.ts"
+		}
+	},
 	"scripts": {
 		"prepack": "yarn build",
 		"start": "node .",

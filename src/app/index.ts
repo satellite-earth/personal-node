@@ -1,6 +1,7 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
+import { NostrEvent } from 'nostr-tools';
 
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
@@ -16,7 +17,6 @@ import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
 import { formatPubkey } from '../helpers/pubkey.js';
-import { NostrEvent } from 'nostr-tools';
 
 export default class App {
 	running = false;

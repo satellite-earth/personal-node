@@ -21,4 +21,6 @@ const VAPID_KEYS: VapidKeys =
 // get AUTH token or generate a random open at startup
 const AUTH = process.env.AUTH || randomBytes(16).toString('hex');
 
+export const REDIRECT_APP_URL = process.env.REDIRECT_APP_URL;
+
 export { USE_PREBUILT_SQLITE_BINDINGS, DATA_PATH, PORT, AUTH, OWNER_PUBKEY, VAPID_KEYS };

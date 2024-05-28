@@ -12,7 +12,7 @@ RUN sed -i '1i //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' .npmrc
 RUN yarn install
 RUN yarn build
 
-FROM node:20.11
+FROM node:20.11-alpine
 ARG NODE_AUTH_TOKEN
 
 WORKDIR /app

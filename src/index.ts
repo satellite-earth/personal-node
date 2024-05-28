@@ -9,7 +9,7 @@ import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-eart
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
-import { PORT, DATA_PATH, AUTH } from './env.js';
+import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -55,12 +55,19 @@ const expressServer = express();
 
 expressServer.use(blobServer.router);
 
-// host the community-ui for the node
-const appDir = path.dirname(importMetaResolve('@satellite-earth/web-ui', import.meta.url).replace('file://', ''));
-expressServer.use(express.static(appDir));
-expressServer.get('*', (req, res) => {
-	res.sendFile(path.resolve(appDir, 'index.html'));
-});
+if (REDIRECT_APP_URL) {
+	// redirect to other web ui
+	const url = new URL('/', REDIRECT_APP_URL);
+	// TODO: add publicly assessable address so app can connect
+	expressServer.get('*', (req, res) => res.redirect(url.toString()));
+} else {
+	// serve the web ui
+	const appDir = path.dirname(importMetaResolve('@satellite-earth/web-ui', import.meta.url).replace('file://', ''));
+	expressServer.use(express.static(appDir));
+	expressServer.get('*', (req, res) => {
+		res.sendFile(path.resolve(appDir, 'index.html'));
+	});
+}
 
 server.on('request', expressServer);
 
