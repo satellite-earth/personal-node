@@ -3,8 +3,8 @@ import WebSocket, { WebSocketServer } from 'ws';
 import express from 'express';
 import path from 'path';
 import { createServer } from 'http';
-import { useWebSocketImplementation } from 'nostr-tools';
 import { mkdirp } from 'mkdirp';
+import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 

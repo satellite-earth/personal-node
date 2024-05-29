@@ -1,5 +1,6 @@
 import { IEventStore } from '@satellite-earth/core';
-import { NostrEvent, SimplePool, SubCloser, kinds } from 'nostr-tools';
+import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
+import { SubCloser } from 'nostr-tools/abstract-pool';
 
 import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';

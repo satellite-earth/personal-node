@@ -1,7 +1,8 @@
 import { type Database } from 'better-sqlite3';
 import { Debugger } from 'debug';
-import { Filter, NostrEvent, Relay, Subscription, kinds } from 'nostr-tools';
+import { Filter, NostrEvent, Relay, kinds } from 'nostr-tools';
 import { NostrRelay, RelayActions } from '@satellite-earth/core';
+import { Subscription } from 'nostr-tools/abstract-relay';
 
 import { LabeledEventStore } from './labeled-event-store.js';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
