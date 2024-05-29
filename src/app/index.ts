@@ -1,7 +1,7 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
-import { NostrEvent } from 'nostr-tools';
+import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
 
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
@@ -17,6 +17,9 @@ import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
 import { formatPubkey } from '../helpers/pubkey.js';
+import DirectMessageManager from '../modules/direct-message-manager.js';
+import DirectMessageActions from '../modules/control/dm-actions.js';
+import AddressBook from '../modules/address-book.js';
 
 export default class App {
 	running = false;
@@ -29,6 +32,10 @@ export default class App {
 	receiver: Receiver;
 	control: ControlApi;
 	statusLog = new StatusLog();
+
+	pool: SimplePool;
+	addressBook: AddressBook;
+	directMessageManager: DirectMessageManager;
 
 	blobMetadata: IBlobMetadataStore;
 	blobStorage: LocalStorage;
@@ -45,8 +52,12 @@ export default class App {
 			reportInterval: 1000,
 		});
 
+		this.pool = new SimplePool();
+
 		this.eventStore = new SQLiteEventStore(this.database.db);
 		this.eventStore.setup();
+
+		this.addressBook = new AddressBook(this.eventStore, this.pool);
 
 		// Initialize model of the social graph
 		this.graph = new Graph();
@@ -61,12 +72,21 @@ export default class App {
 			this.statusLog.log(`[CONFIG] set ${field}`);
 		});
 
+		// DM manager
+		this.directMessageManager = new DirectMessageManager(this.eventStore, this.addressBook, this.pool);
+
+		if (this.config.config.owner) this.directMessageManager.watchInbox(this.config.config.owner);
+		this.config.on('config:updated', (config) => {
+			if (config.owner) this.directMessageManager.watchInbox(config.owner);
+		});
+
 		// API for controlling the node
 		this.control = new ControlApi(this, AUTH);
 		this.control.registerHandler(new ConfigActions(this));
 		this.control.registerHandler(new ReceiverActions(this));
 		this.control.registerHandler(new LogActions(this));
 		this.control.registerHandler(new DatabaseActions(this));
+		this.control.registerHandler(new DirectMessageActions(this));
 
 		if (process.send) this.control.attachToProcess(process);
 
@@ -112,6 +132,17 @@ export default class App {
 			if (auth.pubkey === this.config.config.owner) {
 				this.control.authenticatedConnections.add(ws);
 			}
+		});
+
+		// handling forwarding direct messages
+		this.relay.registerEventHandler(async (ctx, next) => {
+			if (ctx.event.kind === kinds.EncryptedDirectMessage && ctx.event.pubkey === this.config.config.owner) {
+				// send direct message
+				const results = await this.directMessageManager.forwardMessage(ctx.event);
+
+				if (!results || !results.some((p) => p.status === 'fulfilled')) throw new Error('Failed to forward message');
+				return `Forwarded message to ${results.filter((p) => p.status === 'fulfilled').length}/${results.length} relays`;
+			} else return next();
 		});
 	}
 

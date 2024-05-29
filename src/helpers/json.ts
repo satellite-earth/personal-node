@@ -34,7 +34,7 @@ const saveJson = (data: any, params: { path: string }) => {
 
 const writeJsonl = (
 	jsonArray: any[],
-	params: { outputName: string; compress?: boolean; outputPath: string; compressionLevel?: number }
+	params: { outputName: string; compress?: boolean; outputPath: string; compressionLevel?: number },
 ) => {
 	return new Promise<void>((resolve, reject) => {
 		const filename = params.compress ? `${params.outputName}.temp.jsonl` : `${params.outputName}.jsonl`;
@@ -98,7 +98,7 @@ const CompressZSTD = (params: { outputPath: string; inputPath: string; level?: n
 
 		// Detect architecture to pass the correct native zstd module
 		const cs = ps
-			.spawn(path.resolve(__dirname, `../../../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`), [
+			.spawn(path.resolve(__dirname, `../../lib/bin/${process.arch === 'arm64' ? 'arm64' : 'x64'}/zstd`), [
 				`-${typeof params.level === 'undefined' ? 7 : params.level}`,
 			])
 			.on('exit', (code: number, signal: string) => {
