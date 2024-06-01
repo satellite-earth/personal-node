@@ -20,6 +20,7 @@ import { formatPubkey } from '../helpers/pubkey.js';
 import DirectMessageManager from '../modules/direct-message-manager.js';
 import DirectMessageActions from '../modules/control/dm-actions.js';
 import AddressBook from '../modules/address-book.js';
+import { COMMON_CONTACT_RELAY } from '../const.js';
 
 export default class App {
 	running = false;
@@ -59,11 +60,20 @@ export default class App {
 
 		this.addressBook = new AddressBook(this.eventStore, this.pool);
 
+		// set extra relays on address book
+		this.addressBook.extraRelays = [
+			COMMON_CONTACT_RELAY,
+			...Object.values(this.config.config.relays).map((r) => r.url),
+		];
+		this.config.on('config:updated', (config) => {
+			this.addressBook.extraRelays = [COMMON_CONTACT_RELAY, ...Object.values(config.relays).map((r) => r.url)];
+		});
+
 		// Initialize model of the social graph
 		this.graph = new Graph();
 
 		// Initializes receiver for pulling data from remote relays
-		this.receiver = new Receiver(this.graph);
+		this.receiver = new Receiver(this.pool, this.graph);
 		this.updateReceiverFromConfig();
 
 		// update the receiver options when the config changes

@@ -10,6 +10,7 @@ export default class AddressBook {
 	log = logger.extend('AddressBook');
 	pool: SimplePool;
 	eventStore: IEventStore;
+	extraRelays = [COMMON_CONTACT_RELAY];
 
 	constructor(eventStore: IEventStore, pool?: SimplePool) {
 		this.eventStore = eventStore;
@@ -62,7 +63,9 @@ export default class AddressBook {
 			};
 
 			for (const [pubkey, relays] of this.fetching) {
-				addPubkeyToRelayFilter(COMMON_CONTACT_RELAY, pubkey);
+				for (const relay of this.extraRelays) {
+					addPubkeyToRelayFilter(relay, pubkey);
+				}
 				for (const relay of relays) {
 					addPubkeyToRelayFilter(relay, pubkey);
 				}

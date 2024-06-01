@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import { Filter, NostrEvent } from 'nostr-tools';
+import { Filter, NostrEvent, SimplePool } from 'nostr-tools';
 
 import type Graph from '../graph/index.js';
 import { type Node } from '../graph/index.js';
@@ -24,8 +24,10 @@ type EventMap = {
 };
 
 export default class Receiver extends EventEmitter<EventMap> {
-	graph: Graph;
 	log = logger.extend('Receiver');
+
+	graph: Graph;
+	pool: SimplePool;
 
 	/** The pubkeys to start download events for */
 	pubkeys = new Set<string>();
@@ -43,8 +45,9 @@ export default class Receiver extends EventEmitter<EventMap> {
 		{ relay: RelayScrapper; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
 	> = {};
 
-	constructor(graph: Graph) {
+	constructor(pool: SimplePool, graph: Graph) {
 		super();
+		this.pool = pool;
 		this.graph = graph;
 	}
 
@@ -139,7 +142,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 				if (this.status.active) {
 					this.remote[relay.url].reconnecting = setTimeout(() => {
 						console.log(
-							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs'
+							relay.url + ' attmepting reconnect after ' + this.remote[relay.url].reconnectDelay + ' millsecs',
 						);
 
 						relay.connect();
@@ -206,7 +209,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 2 ? primaryReference : undefined,
-					}
+					},
 				);
 			};
 
@@ -220,7 +223,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 1 ? secondaryData : undefined,
-					}
+					},
 				);
 			};
 
@@ -235,7 +238,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: primaryData,
-					}
+					},
 				);
 			};
 
@@ -252,7 +255,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 					],
 					{
 						oneose: this.cacheLevel > 2 ? tertiaryMetadata : secondaryData,
-					}
+					},
 				);
 			};
 
@@ -266,7 +269,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 				],
 				{
 					oneose: this.cacheLevel === 1 ? primaryData : secondaryMetadata,
-				}
+				},
 			);
 		};
 
