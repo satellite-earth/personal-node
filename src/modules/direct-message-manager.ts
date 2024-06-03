@@ -1,19 +1,23 @@
 import { IEventStore } from '@satellite-earth/core';
 import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
 import { SubCloser } from 'nostr-tools/abstract-pool';
+import { Subscription } from 'nostr-tools/abstract-relay';
 
 import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';
 import { logger } from '../logger.js';
+import LocalDatabase from '../app/database.js';
 
 /** handles sending and receiving direct messages */
 export default class DirectMessageManager {
 	log = logger.extend('DirectMessageManager');
+	database: LocalDatabase;
 	eventStore: IEventStore;
 	addressBook: AddressBook;
 	pool: SimplePool;
 
-	constructor(eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
+	constructor(database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
+		this.database = database;
 		this.eventStore = eventStore;
 		this.pool = pool || new SimplePool();
 		this.addressBook = addressBook || new AddressBook(eventStore, pool);
@@ -41,7 +45,7 @@ export default class DirectMessageManager {
 		else return b + ':' + a;
 	}
 
-	watching = new Map<string, SubCloser>();
+	watching = new Map<string, Map<string, Subscription>>();
 	async watchInbox(pubkey: string) {
 		if (this.watching.has(pubkey)) return;
 
@@ -53,18 +57,38 @@ export default class DirectMessageManager {
 		}
 
 		const inboxes = getInboxes(mailboxes);
-		const sub = this.pool.subscribeMany(inboxes, [{ kinds: [kinds.EncryptedDirectMessage], '#p': [pubkey] }], {
-			onevent: (event) => {
-				this.eventStore.addEvent(event);
-			},
-		});
-		this.watching.set(pubkey, sub);
+		const subscriptions = new Map<string, Subscription>();
+
+		for (const url of inboxes) {
+			const subscribe = async () => {
+				const relay = await this.pool.ensureRelay(url);
+				const sub = relay.subscribe([{ kinds: [kinds.EncryptedDirectMessage], '#p': [pubkey] }], {
+					onevent: (event) => {
+						this.eventStore.addEvent(event);
+					},
+					onclose: () => {
+						// reconnect if we are still watching this pubkey
+						if (this.watching.has(pubkey)) {
+							this.log(`Reconnecting to ${relay.url} for ${pubkey} inbox DMs`);
+							setTimeout(() => subscribe(), 30_000);
+						}
+					},
+				});
+
+				subscriptions.set(relay.url, sub);
+			};
+
+			subscribe();
+		}
+		this.watching.set(pubkey, subscriptions);
 	}
 	stopWatchInbox(pubkey: string) {
-		const sub = this.watching.get(pubkey);
-		if (sub) {
+		const subs = this.watching.get(pubkey);
+		if (subs) {
 			this.watching.delete(pubkey);
-			sub.close();
+			for (const [_, sub] of subs) {
+				sub.close();
+			}
 		}
 	}
 
@@ -107,5 +131,9 @@ export default class DirectMessageManager {
 			sub.close();
 			this.subscriptions.delete(key);
 		}
+	}
+
+	getKind4MessageCount(pubkey: string) {
+		return this.database.getKind4MessageCount(pubkey);
 	}
 }

@@ -83,7 +83,7 @@ export default class App {
 		});
 
 		// DM manager
-		this.directMessageManager = new DirectMessageManager(this.eventStore, this.addressBook, this.pool);
+		this.directMessageManager = new DirectMessageManager(this.database, this.eventStore, this.addressBook, this.pool);
 
 		if (this.config.config.owner) this.directMessageManager.watchInbox(this.config.config.owner);
 		this.config.on('config:updated', (config) => {
