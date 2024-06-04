@@ -2,11 +2,13 @@ import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
+import webPush from 'web-push';
 
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
-import { AUTH, DATA_PATH } from '../env.js';
+import { COMMON_CONTACT_RELAY } from '../const.js';
+import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
 import ControlApi from '../modules/control/control-api.js';
@@ -16,16 +18,19 @@ import Receiver from '../modules/receiver/index.js';
 import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
-import { formatPubkey } from '../helpers/pubkey.js';
+import { formatPubkey, isHex } from '../helpers/pubkey.js';
 import DirectMessageManager from '../modules/direct-message-manager.js';
 import DirectMessageActions from '../modules/control/dm-actions.js';
 import AddressBook from '../modules/address-book.js';
-import { COMMON_CONTACT_RELAY } from '../const.js';
+import NotificationsManager from '../modules/notifications-manager.js';
+import AppState from '../modules/app-state.js';
+import NotificationActions from '../modules/control/notification-actions.js';
 
 export default class App {
 	running = false;
 
 	config: ConfigManager;
+	state: AppState;
 	database: Database;
 	eventStore: IEventStore;
 	graph: Graph;
@@ -38,14 +43,34 @@ export default class App {
 	addressBook: AddressBook;
 	directMessageManager: DirectMessageManager;
 
+	notifications: NotificationsManager;
+
 	blobMetadata: IBlobMetadataStore;
 	blobStorage: LocalStorage;
 	blobDownloader: BlobDownloader;
 
 	constructor(dataPath: string) {
 		const configPath = path.join(dataPath, 'node.json');
+		const statePath = path.join(dataPath, 'state.json');
+
+		this.state = new AppState(statePath);
+		this.state.read();
 
 		this.config = new ConfigManager(configPath);
+		this.config.read();
+
+		// setup VAPID keys if they don't exist
+		if (!this.config.data.vapidPrivateKey || !this.config.data.vapidPublicKey) {
+			const keys = webPush.generateVAPIDKeys();
+			this.config.data.vapidPublicKey = keys.publicKey;
+			this.config.data.vapidPrivateKey = keys.privateKey;
+			this.config.write();
+		}
+
+		// set owner pubkey from env variable
+		if (!this.config.data.owner && OWNER_PUBKEY && isHex(OWNER_PUBKEY)) {
+			this.config.data.owner = OWNER_PUBKEY;
+		}
 
 		// Init embedded sqlite database
 		this.database = new Database({
@@ -61,23 +86,27 @@ export default class App {
 		this.addressBook = new AddressBook(this.eventStore, this.pool);
 
 		// set extra relays on address book
-		this.addressBook.extraRelays = [
-			COMMON_CONTACT_RELAY,
-			...Object.values(this.config.config.relays).map((r) => r.url),
-		];
-		this.config.on('config:updated', (config) => {
+		this.addressBook.extraRelays = [COMMON_CONTACT_RELAY, ...Object.values(this.config.data.relays).map((r) => r.url)];
+		this.config.on('changed', (config) => {
 			this.addressBook.extraRelays = [COMMON_CONTACT_RELAY, ...Object.values(config.relays).map((r) => r.url)];
 		});
 
 		// Initialize model of the social graph
 		this.graph = new Graph();
 
+		// Setup the notifications manager
+		this.notifications = new NotificationsManager(this.eventStore, this.state);
+		this.notifications.keys = {
+			publicKey: this.config.data.vapidPublicKey!,
+			privateKey: this.config.data.vapidPrivateKey!,
+		};
+
 		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this.pool, this.graph);
 		this.updateReceiverFromConfig();
 
 		// update the receiver options when the config changes
-		this.config.on('config:updated', (config, field) => {
+		this.config.on('changed', (config, field) => {
 			this.updateReceiverFromConfig(config);
 			this.statusLog.log(`[CONFIG] set ${field}`);
 		});
@@ -85,8 +114,8 @@ export default class App {
 		// DM manager
 		this.directMessageManager = new DirectMessageManager(this.database, this.eventStore, this.addressBook, this.pool);
 
-		if (this.config.config.owner) this.directMessageManager.watchInbox(this.config.config.owner);
-		this.config.on('config:updated', (config) => {
+		if (this.config.data.owner) this.directMessageManager.watchInbox(this.config.data.owner);
+		this.config.on('changed', (config) => {
 			if (config.owner) this.directMessageManager.watchInbox(config.owner);
 		});
 
@@ -97,6 +126,7 @@ export default class App {
 		this.control.registerHandler(new LogActions(this));
 		this.control.registerHandler(new DatabaseActions(this));
 		this.control.registerHandler(new DirectMessageActions(this));
+		this.control.registerHandler(new NotificationActions(this));
 
 		if (process.send) this.control.attachToProcess(process);
 
@@ -133,20 +163,20 @@ export default class App {
 
 		// only allow the owner to NIP-42 authenticate with the relay
 		this.relay.checkAuth = (ws, auth) => {
-			if (auth.pubkey !== this.config.config.owner) return 'Pubkey dose not match owner';
+			if (auth.pubkey !== this.config.data.owner) return 'Pubkey dose not match owner';
 			return true;
 		};
 
 		// when the owner to NIP-42 authenticates with the relay pass it along to the control
 		this.relay.on('socket:auth', (ws, auth) => {
-			if (auth.pubkey === this.config.config.owner) {
+			if (auth.pubkey === this.config.data.owner) {
 				this.control.authenticatedConnections.add(ws);
 			}
 		});
 
 		// handling forwarding direct messages
 		this.relay.registerEventHandler(async (ctx, next) => {
-			if (ctx.event.kind === kinds.EncryptedDirectMessage && ctx.event.pubkey === this.config.config.owner) {
+			if (ctx.event.kind === kinds.EncryptedDirectMessage && ctx.event.pubkey === this.config.data.owner) {
 				// send direct message
 				const results = await this.directMessageManager.forwardMessage(ctx.event);
 
@@ -156,7 +186,7 @@ export default class App {
 		});
 	}
 
-	private updateReceiverFromConfig(config = this.config.config) {
+	private updateReceiverFromConfig(config = this.config.data) {
 		this.receiver.pubkeys.clear();
 		this.receiver.explicitRelays.clear();
 
@@ -185,14 +215,14 @@ export default class App {
 	start() {
 		this.running = true;
 
+		this.config.read();
+		this.state.read();
+
 		const events = this.eventStore.getEventsForFilters([{ kinds: [0, 3] }]);
 
 		for (let event of events) {
 			this.graph.add(event);
 		}
-
-		// Set initial stats for the database
-		// this.control.updateDatabaseStatus();
 
 		this.tick();
 	}
@@ -205,9 +235,10 @@ export default class App {
 
 	stop() {
 		this.running = false;
+		this.config.write();
+		this.state.write();
 		this.relay.stop();
 		this.database.destroy();
 		this.receiver.destroy();
-		// this.control.stop();
 	}
 }

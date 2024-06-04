@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { LogMessage, LogResponse } from '@satellite-earth/core/types/control-api.js';
+import { LogMessage, LogResponse } from '@satellite-earth/core/types/control-api/log.js';
 
 import { ControlMessageHandler } from './control-api.js';
 import type App from '../../app/index.js';

@@ -5,3 +5,7 @@ export function formatPubkey(pubkey: string) {
 
 	return `${npub.slice(0, 9)}...${npub.slice(-4)}`;
 }
+
+export function isHex(pubkey: string) {
+	return pubkey.match(/^[0-9a-f]{64}$/i);
+}

@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { ReceiverMessage, ReceiverResponse } from '@satellite-earth/core/types/control-api.js';
+import { ReceiverMessage, ReceiverResponse } from '@satellite-earth/core/types/control-api/receiver.js';
 
 import type App from '../../app/index.js';
 import { type ControlMessageHandler } from './control-api.js';

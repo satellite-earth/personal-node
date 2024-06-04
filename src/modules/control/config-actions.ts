@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { ConfigMessage, ConfigResponse } from '@satellite-earth/core/types/control-api.js';
+import { ConfigMessage, ConfigResponse } from '@satellite-earth/core/types/control-api/config.js';
 
 import type App from '../../app/index.js';
 import { type ControlMessageHandler } from './control-api.js';
@@ -15,7 +15,7 @@ export default class ConfigActions implements ControlMessageHandler {
 		this.app = app;
 
 		// when config changes send it to the subscribed sockets
-		this.app.config.on('config:updated', (config) => {
+		this.app.config.on('changed', (config) => {
 			for (const sock of this.subscribed) {
 				this.send(sock, ['CONTROL', 'CONFIG', 'CHANGED', config]);
 			}
@@ -28,7 +28,7 @@ export default class ConfigActions implements ControlMessageHandler {
 			case 'SUBSCRIBE':
 				this.subscribed.add(sock);
 				sock.once('close', () => this.subscribed.delete(sock));
-				this.send(sock, ['CONTROL', 'CONFIG', 'CHANGED', this.app.config.config]);
+				this.send(sock, ['CONTROL', 'CONFIG', 'CHANGED', this.app.config.data]);
 				return true;
 
 			case 'SET':

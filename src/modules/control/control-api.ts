@@ -3,13 +3,13 @@ import { type IncomingMessage } from 'http';
 
 import type App from '../../app/index.js';
 import { logger } from '../../logger.js';
-import { ControlResponse } from '@satellite-earth/core/types/control-api.js';
+import { ControlResponse } from '@satellite-earth/core/types/control-api/index.js';
 
 export type ControlMessage = ['CONTROL', string, string, ...any[]];
 export interface ControlMessageHandler {
 	app: App;
 	name: string;
-	handleMessage(sock: WebSocket | NodeJS.Process, message: ['CONTROL', ...string[]]): boolean;
+	handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage): boolean;
 }
 
 /** handles web socket connections and 'CONTROL' messages */
