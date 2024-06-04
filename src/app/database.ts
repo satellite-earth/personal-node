@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 
 import { USE_PREBUILT_SQLITE_BINDINGS } from '../env.js';
-import { DMStats } from '@satellite-earth/core/types/control-api.js';
+import { DMStats } from '@satellite-earth/core/types/control-api/direct-messages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

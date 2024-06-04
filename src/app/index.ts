@@ -100,6 +100,8 @@ export default class App {
 			publicKey: this.config.data.vapidPublicKey!,
 			privateKey: this.config.data.vapidPrivateKey!,
 		};
+		this.notifications.owner = this.config.data.owner;
+		this.config.on('changed', (config) => (this.notifications.owner = config.owner));
 
 		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this.pool, this.graph);
