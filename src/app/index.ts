@@ -2,12 +2,13 @@ import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
+import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import webPush from 'web-push';
 
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
-import { COMMON_CONTACT_RELAY } from '../const.js';
+import { COMMON_CONTACT_RELAY, SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
@@ -176,7 +177,23 @@ export default class App {
 			}
 		});
 
-		// handling forwarding direct messages
+		// if socket is unauthenticated only allow owner's events and incoming DMs
+		this.relay.registerEventHandler((ctx, next) => {
+			const auth = ctx.relay.getSocketAuth(ctx.socket);
+
+			if (!auth) {
+				// is it an incoming DM for the owner?
+				if (ctx.event.kind === kinds.EncryptedDirectMessage && getDMRecipient(ctx.event) === this.config.data.owner) {
+					return next();
+				}
+
+				throw new Error(ctx.relay.makeAuthRequiredReason('This relay only accepts events from its owner'));
+			}
+
+			return next();
+		});
+
+		// handle forwarding direct messages by owner
 		this.relay.registerEventHandler(async (ctx, next) => {
 			if (ctx.event.kind === kinds.EncryptedDirectMessage && ctx.event.pubkey === this.config.data.owner) {
 				// send direct message
@@ -185,6 +202,20 @@ export default class App {
 				if (!results || !results.some((p) => p.status === 'fulfilled')) throw new Error('Failed to forward message');
 				return `Forwarded message to ${results.filter((p) => p.status === 'fulfilled').length}/${results.length} relays`;
 			} else return next();
+		});
+
+		// block subscriptions for sensitive kinds unless NIP-42 auth
+		this.relay.registerSubscriptionFilter((ctx, next) => {
+			const hasSensitiveKinds = ctx.filters.some(
+				(filter) => filter.kinds && SENSITIVE_KINDS.some((k) => filter.kinds?.includes(k)),
+			);
+
+			if (hasSensitiveKinds) {
+				const auth = ctx.relay.getSocketAuth(ctx.socket);
+				if (!auth) throw new Error(ctx.relay.makeAuthRequiredReason('Cant view sensitive events without auth'));
+			}
+
+			return next();
 		});
 	}
 

@@ -39,7 +39,7 @@ export default class NotificationsManager {
 		this.subscriptions = [...this.subscriptions, sub];
 	}
 	unregisterSubscription(key: string) {
-		this.log(`Removed new subscription ${key}`);
+		this.log(`Removed subscription ${key}`);
 		this.subscriptions = this.subscriptions.filter((s) => s.keys.p256dh !== key);
 	}
 
