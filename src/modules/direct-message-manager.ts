@@ -40,9 +40,8 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		if (!addressedTo) return;
 
 		const mailboxes = await this.addressBook.loadMailboxes(addressedTo);
-		if (!mailboxes) return;
 
-		const inboxes = getInboxes(mailboxes);
+		const inboxes = mailboxes ? getInboxes(mailboxes) : this.explicitRelays;
 		this.log(`Forwarding message to ${inboxes.length} relays`);
 		const results = await Promise.allSettled(this.pool.publish(inboxes, event));
 
