@@ -60,7 +60,7 @@ function getPublicRelayAddressFromRequest(req: Request) {
 	if (PUBLIC_ADDRESS) {
 		url = new URL(PUBLIC_ADDRESS);
 	} else {
-		url = new URL('/', req.protocol + '//' + req.hostname);
+		url = new URL('/', req.protocol + '://' + req.hostname);
 		url.port = String(PORT);
 	}
 	url.protocol = req.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -73,7 +73,7 @@ expressServer.get('/', (req, res, next) => {
 	if (!app.config.data.owner) {
 		logger('Redirecting to setup view');
 
-		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '//' + req.hostname);
+		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '://' + req.hostname);
 		const relay = getPublicRelayAddressFromRequest(req);
 		url.searchParams.set('relay', relay.toString());
 		url.searchParams.set('auth', AUTH);
