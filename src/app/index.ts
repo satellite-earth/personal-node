@@ -8,7 +8,7 @@ import webPush from 'web-push';
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
-import { COMMON_CONTACT_RELAY, SENSITIVE_KINDS } from '../const.js';
+import { COMMON_CONTACT_RELAYs, SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
@@ -26,6 +26,8 @@ import AddressBook from '../modules/address-book.js';
 import NotificationsManager from '../modules/notifications-manager.js';
 import AppState from '../modules/app-state.js';
 import NotificationActions from '../modules/control/notification-actions.js';
+import ProfileBook from '../modules/profile-book.js';
+import { getOutboxes } from '../helpers/mailboxes.js';
 
 export default class App {
 	running = false;
@@ -42,6 +44,7 @@ export default class App {
 
 	pool: SimplePool;
 	addressBook: AddressBook;
+	profileBook: ProfileBook;
 	directMessageManager: DirectMessageManager;
 
 	notifications: NotificationsManager;
@@ -85,11 +88,36 @@ export default class App {
 		this.eventStore.setup();
 
 		this.addressBook = new AddressBook(this.eventStore, this.pool);
+		this.profileBook = new ProfileBook(this.eventStore, this.pool);
 
-		// set extra relays on address book
-		this.addressBook.extraRelays = [COMMON_CONTACT_RELAY, ...Object.values(this.config.data.relays).map((r) => r.url)];
+		// set extra relays on address and profile book
+		this.addressBook.extraRelays = [
+			...COMMON_CONTACT_RELAYs,
+			...Object.values(this.config.data.relays).map((r) => r.url),
+		];
+		this.profileBook.extraRelays = [
+			...COMMON_CONTACT_RELAYs,
+			...Object.values(this.config.data.relays).map((r) => r.url),
+		];
 		this.config.on('changed', (config) => {
-			this.addressBook.extraRelays = [COMMON_CONTACT_RELAY, ...Object.values(config.relays).map((r) => r.url)];
+			this.addressBook.extraRelays = [...COMMON_CONTACT_RELAYs, ...Object.values(config.relays).map((r) => r.url)];
+			this.profileBook.extraRelays = [...COMMON_CONTACT_RELAYs, ...Object.values(config.relays).map((r) => r.url)];
+		});
+
+		// Fetch profiles for all incoming DMs
+		this.eventStore.on('event:inserted', (event) => {
+			switch (event.kind) {
+				case kinds.EncryptedDirectMessage:
+					const profile = this.profileBook.getProfile(event.pubkey);
+					if (!profile) {
+						this.profileBook.loadProfile(event.pubkey, this.addressBook.getOutboxes(event.pubkey));
+
+						this.addressBook.loadMailboxes(event.pubkey).then((mailboxes) => {
+							this.profileBook.loadProfile(event.pubkey, mailboxes ? getOutboxes(mailboxes) : undefined);
+						});
+					}
+					break;
+			}
 		});
 
 		// Initialize model of the social graph
@@ -120,6 +148,12 @@ export default class App {
 		if (this.config.data.owner) this.directMessageManager.watchInbox(this.config.data.owner);
 		this.config.on('changed', (config) => {
 			if (config.owner) this.directMessageManager.watchInbox(config.owner);
+		});
+
+		// update profiles when conversations are opened
+		this.directMessageManager.on('open', (a, b) => {
+			this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
+			this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
 		});
 
 		// API for controlling the node
@@ -153,11 +187,6 @@ export default class App {
 
 			// log event in status log
 			this.logInsertedEvent(event);
-		});
-
-		// Handle new events being saved
-		this.eventStore.on('event:inserted', (event) => {
-			// this.control.handleInserted(event);
 		});
 
 		this.relay = new NostrRelay(this.eventStore);

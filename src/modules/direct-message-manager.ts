@@ -2,14 +2,20 @@ import { IEventStore } from '@satellite-earth/core';
 import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
 import { SubCloser } from 'nostr-tools/abstract-pool';
 import { Subscription } from 'nostr-tools/abstract-relay';
+import { EventEmitter } from 'events';
 
 import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';
 import { logger } from '../logger.js';
 import LocalDatabase from '../app/database.js';
 
+type EventMap = {
+	open: [string, string];
+	close: [string, string];
+};
+
 /** handles sending and receiving direct messages */
-export default class DirectMessageManager {
+export default class DirectMessageManager extends EventEmitter<EventMap> {
 	log = logger.extend('DirectMessageManager');
 	database: LocalDatabase;
 	eventStore: IEventStore;
@@ -17,6 +23,7 @@ export default class DirectMessageManager {
 	pool: SimplePool;
 
 	constructor(database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
+		super();
 		this.database = database;
 		this.eventStore = eventStore;
 		this.pool = pool || new SimplePool();
@@ -122,6 +129,7 @@ export default class DirectMessageManager {
 
 		this.log(`Opened conversation ${key} on ${relays.size} relays`);
 		this.subscriptions.set(key, sub);
+		this.emit('open', a, b);
 	}
 	closeConversation(a: string, b: string) {
 		const key = this.getConversationKey(a, b);
@@ -130,6 +138,7 @@ export default class DirectMessageManager {
 		if (sub) {
 			sub.close();
 			this.subscriptions.delete(key);
+			this.emit('close', a, b);
 		}
 	}
 
