@@ -183,9 +183,10 @@ export default class App {
 
 			if (!auth) {
 				// is it an incoming DM for the owner?
-				if (ctx.event.kind === kinds.EncryptedDirectMessage && getDMRecipient(ctx.event) === this.config.data.owner) {
+				if (ctx.event.kind === kinds.EncryptedDirectMessage && getDMRecipient(ctx.event) === this.config.data.owner)
 					return next();
-				}
+
+				if (ctx.event.pubkey === this.config.data.owner) return next();
 
 				throw new Error(ctx.relay.makeAuthRequiredReason('This relay only accepts events from its owner'));
 			}
