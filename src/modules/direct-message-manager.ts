@@ -22,7 +22,7 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 	addressBook: AddressBook;
 	pool: SimplePool;
 
-	explicitRelays: string[] = []
+	explicitRelays: string[] = [];
 
 	constructor(database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
 		super();
@@ -39,7 +39,7 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const addressedTo = event.tags.find((t) => t[0] === 'p')?.[1];
 		if (!addressedTo) return;
 
-		const mailboxes = await this.addressBook.loadMailboxes(event.pubkey);
+		const mailboxes = await this.addressBook.loadMailboxes(addressedTo);
 		if (!mailboxes) return;
 
 		const inboxes = getInboxes(mailboxes);
@@ -68,7 +68,7 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const inboxes = getInboxes(mailboxes);
 		const subscriptions = new Map<string, Subscription>();
 
-		const relays = [...inboxes, ...this.explicitRelays]
+		const relays = [...inboxes, ...this.explicitRelays];
 
 		for (const url of relays) {
 			const subscribe = async () => {
