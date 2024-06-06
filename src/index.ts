@@ -1,6 +1,6 @@
 #!/bin/env node
 import WebSocket, { WebSocketServer } from 'ws';
-import express from 'express';
+import express, { Request } from 'express';
 import path from 'path';
 import { createServer } from 'http';
 import { mkdirp } from 'mkdirp';
@@ -9,7 +9,7 @@ import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-eart
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
-import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL } from './env.js';
+import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -55,11 +55,42 @@ const expressServer = express();
 
 expressServer.use(blobServer.router);
 
+function getPublicRelayAddressFromRequest(req: Request) {
+	let url: URL;
+	if (PUBLIC_ADDRESS) {
+		url = new URL(PUBLIC_ADDRESS);
+	} else {
+		url = new URL('/', req.protocol + '//' + req.hostname);
+		url.port = String(PORT);
+	}
+	url.protocol = req.protocol === 'https:' ? 'wss:' : 'ws:';
+
+	return url;
+}
+
+expressServer.get('/', (req, res, next) => {
+	// if the app isn't setup redirect to the setup view
+	if (!app.config.data.owner) {
+		logger('Redirecting to setup view');
+
+		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '//' + req.hostname);
+		const relay = getPublicRelayAddressFromRequest(req);
+		url.searchParams.set('relay', relay.toString());
+		url.searchParams.set('auth', AUTH);
+		res.redirect(url.toString());
+	} else return next();
+});
+
 if (REDIRECT_APP_URL) {
-	// redirect to other web ui
-	const url = new URL('/', REDIRECT_APP_URL);
 	// TODO: add publicly assessable address so app can connect
-	expressServer.get('*', (req, res) => res.redirect(url.toString()));
+	expressServer.get('*', (req, res) => {
+		// redirect to other web ui
+		const url = new URL('/', REDIRECT_APP_URL);
+		const relay = getPublicRelayAddressFromRequest(req);
+		url.searchParams.set('relay', relay.toString());
+
+		res.redirect(url.toString());
+	});
 } else {
 	// serve the web ui
 	const appDir = path.dirname(importMetaResolve('@satellite-earth/web-ui', import.meta.url).replace('file://', ''));

@@ -22,6 +22,8 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 	addressBook: AddressBook;
 	pool: SimplePool;
 
+	explicitRelays: string[] = []
+
 	constructor(database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
 		super();
 		this.database = database;
@@ -66,7 +68,9 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const inboxes = getInboxes(mailboxes);
 		const subscriptions = new Map<string, Subscription>();
 
-		for (const url of inboxes) {
+		const relays = [...inboxes, ...this.explicitRelays]
+
+		for (const url of relays) {
 			const subscribe = async () => {
 				const relay = await this.pool.ensureRelay(url);
 				const sub = relay.subscribe([{ kinds: [kinds.EncryptedDirectMessage], '#p': [pubkey] }], {

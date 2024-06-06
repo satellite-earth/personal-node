@@ -24,11 +24,9 @@ export default class ConfigManager extends ReactiveJsonFileSync<PrivateNodeConfi
 
 	/** @deprecated use .update or .data[key] = value instead */
 	setField(field: keyof PrivateNodeConfig, value: any) {
-		if (Reflect.has(this.data, field)) {
-			// @ts-expect-error
-			this.data[field] = value;
+		// @ts-expect-error
+		this.data[field] = value;
 
-			this.write();
-		}
+		this.write();
 	}
 }
