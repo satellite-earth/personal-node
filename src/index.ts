@@ -73,7 +73,7 @@ expressServer.get('/', (req, res, next) => {
 	if (!app.config.data.owner) {
 		logger('Redirecting to setup view');
 
-		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '://' + req.hostname);
+		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '://' + req.headers['host']);
 		const relay = getPublicRelayAddressFromRequest(req);
 		url.searchParams.set('relay', relay.toString());
 		url.searchParams.set('auth', AUTH);
