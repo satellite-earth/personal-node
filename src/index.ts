@@ -85,7 +85,7 @@ if (REDIRECT_APP_URL) {
 	// TODO: add publicly assessable address so app can connect
 	expressServer.get('*', (req, res) => {
 		// redirect to other web ui
-		const url = new URL('/', REDIRECT_APP_URL);
+		const url = new URL('/connect', REDIRECT_APP_URL);
 		const relay = getPublicRelayAddressFromRequest(req);
 		url.searchParams.set('relay', relay.toString());
 
