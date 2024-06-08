@@ -1,8 +1,9 @@
 #!/bin/env node
+import process from 'node:process';
 import WebSocket, { WebSocketServer } from 'ws';
 import express, { Request } from 'express';
-import path from 'path';
-import { createServer } from 'http';
+import path from 'node:path';
+import { createServer } from 'node:http';
 import { mkdirp } from 'mkdirp';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
@@ -124,3 +125,7 @@ async function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+process.on('unhandledRejection', (reason, promise) => {
+	console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+});
