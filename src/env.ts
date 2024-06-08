@@ -16,3 +16,7 @@ export const PORT = parseInt(process.env.PORT ?? '') || 2012;
 export const AUTH = process.env.AUTH || randomBytes(16).toString('hex');
 
 export const REDIRECT_APP_URL = process.env.REDIRECT_APP_URL;
+
+export const BOOTSTRAP_RELAYS = process.env.BOOTSTRAP_RELAYS
+	? process.env.BOOTSTRAP_RELAYS.split(',')
+	: ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.nostr.band'];
