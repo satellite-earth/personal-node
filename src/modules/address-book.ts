@@ -4,14 +4,14 @@ import _throttle from 'lodash.throttle';
 
 import createDefer, { Deferred } from '../helpers/deferred.js';
 import { getInboxes, getOutboxes } from '../helpers/mailboxes.js';
-import { COMMON_CONTACT_RELAYs } from '../const.js';
+import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
 
 export default class AddressBook {
 	log = logger.extend('AddressBook');
 	pool: SimplePool;
 	eventStore: IEventStore;
-	extraRelays = COMMON_CONTACT_RELAYs;
+	extraRelays = COMMON_CONTACT_RELAYS;
 
 	constructor(eventStore: IEventStore, pool?: SimplePool) {
 		this.eventStore = eventStore;

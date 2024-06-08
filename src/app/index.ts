@@ -8,8 +8,8 @@ import webPush from 'web-push';
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
-import { COMMON_CONTACT_RELAYs, SENSITIVE_KINDS } from '../const.js';
-import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
+import { SENSITIVE_KINDS } from '../const.js';
+import { AUTH, DATA_PATH, OWNER_PUBKEY, COMMON_CONTACT_RELAYS } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
 import ControlApi from '../modules/control/control-api.js';
@@ -92,16 +92,16 @@ export default class App {
 
 		// set extra relays on address and profile book
 		this.addressBook.extraRelays = [
-			...COMMON_CONTACT_RELAYs,
+			...COMMON_CONTACT_RELAYS,
 			...Object.values(this.config.data.relays).map((r) => r.url),
 		];
 		this.profileBook.extraRelays = [
-			...COMMON_CONTACT_RELAYs,
+			...COMMON_CONTACT_RELAYS,
 			...Object.values(this.config.data.relays).map((r) => r.url),
 		];
 		this.config.on('changed', (config) => {
-			this.addressBook.extraRelays = [...COMMON_CONTACT_RELAYs, ...Object.values(config.relays).map((r) => r.url)];
-			this.profileBook.extraRelays = [...COMMON_CONTACT_RELAYs, ...Object.values(config.relays).map((r) => r.url)];
+			this.addressBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
+			this.profileBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
 		});
 
 		// Fetch profiles for all incoming DMs

@@ -20,3 +20,7 @@ export const REDIRECT_APP_URL = process.env.REDIRECT_APP_URL;
 export const BOOTSTRAP_RELAYS = process.env.BOOTSTRAP_RELAYS
 	? process.env.BOOTSTRAP_RELAYS.split(',')
 	: ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.nostr.band'];
+
+export const COMMON_CONTACT_RELAYS = process.env.COMMON_CONTACT_RELAYS
+	? process.env.COMMON_CONTACT_RELAYS.split(',')
+	: ['wss://purplepag.es', 'wss://user.kindpag.es', 'wss://relay.nos.social'];
