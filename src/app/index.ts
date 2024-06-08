@@ -145,10 +145,10 @@ export default class App {
 		// DM manager
 		this.directMessageManager = new DirectMessageManager(this.database, this.eventStore, this.addressBook, this.pool);
 
-		this.directMessageManager.explicitRelays = this.config.data.relays.map((r) => r.url);
+		this.directMessageManager.updateExplictRelays(this.config.data.relays.map((r) => r.url));
 		if (this.config.data.owner) this.directMessageManager.watchInbox(this.config.data.owner);
 		this.config.on('changed', (config) => {
-			this.directMessageManager.explicitRelays = config.relays.map((r) => r.url);
+			this.directMessageManager.updateExplictRelays(config.relays.map((r) => r.url));
 			if (config.owner) this.directMessageManager.watchInbox(config.owner);
 		});
 
