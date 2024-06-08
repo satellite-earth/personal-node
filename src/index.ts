@@ -127,5 +127,8 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 process.on('unhandledRejection', (reason, promise) => {
-	console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+	if (reason instanceof Error) {
+		console.log('Unhandled Rejection');
+		console.log(reason);
+	} else console.log('Unhandled Rejection at:', promise, 'reason:', reason);
 });
