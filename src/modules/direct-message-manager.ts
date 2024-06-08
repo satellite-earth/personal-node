@@ -64,10 +64,8 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 			return;
 		}
 
-		const inboxes = getInboxes(mailboxes);
+		const relays = getInboxes(mailboxes, this.explicitRelays);
 		const subscriptions = new Map<string, Subscription>();
-
-		const relays = [...inboxes, ...this.explicitRelays];
 
 		for (const url of relays) {
 			const subscribe = async () => {
@@ -111,8 +109,10 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const aMailboxes = await this.addressBook.loadMailboxes(a);
 		const bMailboxes = await this.addressBook.loadMailboxes(b);
 
-		const aInboxes = aMailboxes ? getInboxes(aMailboxes) : [];
-		const bInboxes = bMailboxes ? getInboxes(bMailboxes) : [];
+		// If inboxes for either user cannot be determined, either because nip65
+		// was not found, or nip65 had no listed read relays, fall back to explicit
+		const aInboxes = aMailboxes ? getInboxes(aMailboxes, this.explicitRelays) : this.explicitRelays;
+		const bInboxes = bMailboxes ? getInboxes(bMailboxes, this.explicitRelays) : this.explicitRelays;
 
 		const relays = new Set([...aInboxes, ...bInboxes]);
 
