@@ -107,7 +107,7 @@ export default class Graph {
 			Object.keys(u).filter((p) => {
 				return u[p].z > 0;
 			}),
-			2
+			2,
 		);
 
 		// Return list of pubkeys sorted by degrees
