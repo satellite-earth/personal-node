@@ -22,7 +22,7 @@ export type RelayOptions = {
 	skipVerification?: boolean;
 };
 
-export class RelayScrapper extends EventEmitter {
+export class RelayScraper extends EventEmitter {
 	log: Debugger;
 	url: string;
 	ws?: WebSocket;

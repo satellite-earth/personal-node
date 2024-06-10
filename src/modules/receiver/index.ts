@@ -3,7 +3,7 @@ import { Filter, NostrEvent, SimplePool } from 'nostr-tools';
 
 import type Graph from '../graph/index.js';
 import { type Node } from '../graph/index.js';
-import { RelayScrapper } from './relay-scrapper.js';
+import { RelayScraper } from './relay-scraper.js';
 import { logger } from '../../logger.js';
 
 export type ReceiverStatus = {
@@ -37,12 +37,12 @@ export default class Receiver extends EventEmitter<EventMap> {
 	cacheLevel = 2;
 
 	status: ReceiverStatus = { active: false, relays: {} };
-	scrappers = new Map<string, RelayScrapper>();
+	scrapers = new Map<string, RelayScraper>();
 
 	seen = new Set<string>();
 	remote: Record<
 		string,
-		{ relay: RelayScrapper; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
+		{ relay: RelayScraper; reconnecting?: NodeJS.Timeout; reconnectDelay: number; lastReconnectAttempt: number }
 	> = {};
 
 	constructor(pool: SimplePool, graph: Graph) {
@@ -129,7 +129,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 		};
 
 		// Handle closed connection to relay
-		const handleDisconnect = (relay: RelayScrapper) => {
+		const handleDisconnect = (relay: RelayScraper) => {
 			// TODO: relay should be in control of "status" object
 			this.status.relays[relay.url] = { connected: false };
 			this.emit('status:changed', this.status);
@@ -153,7 +153,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 			}
 		};
 
-		const handleConnect = (relay: RelayScrapper) => {
+		const handleConnect = (relay: RelayScraper) => {
 			// On successful connect, reset reconnect state
 			if (this.remote[relay.url]) {
 				clearTimeout(this.remote[relay.url].reconnecting);
@@ -275,7 +275,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 
 		// Connect to each relay and set up subscriptions
 		for (let url of this.explicitRelays) {
-			const relay = new RelayScrapper(url, this.seen, {
+			const relay = new RelayScraper(url, this.seen, {
 				skipVerification: false,
 			});
 
