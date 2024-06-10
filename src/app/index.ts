@@ -9,7 +9,7 @@ import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
 import { SENSITIVE_KINDS } from '../const.js';
-import { AUTH, DATA_PATH, OWNER_PUBKEY, COMMON_CONTACT_RELAYS } from '../env.js';
+import { AUTH, DATA_PATH, OWNER_PUBKEY, COMMON_CONTACT_RELAYS, BOOTSTRAP_RELAYS } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
 import ControlApi from '../modules/control/control-api.js';
@@ -28,6 +28,9 @@ import AppState from '../modules/app-state.js';
 import NotificationActions from '../modules/control/notification-actions.js';
 import ProfileBook from '../modules/profile-book.js';
 import { getOutboxes } from '../helpers/mailboxes.js';
+import { AbstractRelay } from 'nostr-tools/abstract-relay';
+import CautiousPool from '../modules/cautious-pool.js';
+import { PrivateNodeConfig } from '@satellite-earth/core/types/private-node-config.js';
 
 export default class App {
 	running = false;
@@ -82,7 +85,13 @@ export default class App {
 			reportInterval: 1000,
 		});
 
-		this.pool = new SimplePool();
+		const isConnectedToSelf = (relay: AbstractRelay, challenge: string) => {
+			for (const [socket, auth] of this.relay.auth) {
+				if (auth.challenge === challenge) return true;
+			}
+			return false;
+		};
+		this.pool = new CautiousPool(isConnectedToSelf);
 
 		this.eventStore = new SQLiteEventStore(this.database.db);
 		this.eventStore.setup();
@@ -145,12 +154,8 @@ export default class App {
 		// DM manager
 		this.directMessageManager = new DirectMessageManager(this.database, this.eventStore, this.addressBook, this.pool);
 
-		this.directMessageManager.updateExplictRelays(this.config.data.relays.map((r) => r.url));
-		if (this.config.data.owner) this.directMessageManager.watchInbox(this.config.data.owner);
-		this.config.on('changed', (config) => {
-			this.directMessageManager.updateExplictRelays(config.relays.map((r) => r.url));
-			if (config.owner) this.directMessageManager.watchInbox(config.owner);
-		});
+		this.updateDirectMessageManager();
+		this.config.on('changed', this.updateDirectMessageManager.bind(this));
 
 		// update profiles when conversations are opened
 		this.directMessageManager.on('open', (a, b) => {
@@ -249,6 +254,14 @@ export default class App {
 
 			return next();
 		});
+	}
+
+	/** config -> direct message manager */
+	updateDirectMessageManager(config: PrivateNodeConfig = this.config.data) {
+		const relays = config.relays.map((r) => r.url);
+		this.directMessageManager.updateExplicitRelays(relays.length > 0 ? relays : BOOTSTRAP_RELAYS);
+
+		if (config.owner) this.directMessageManager.watchInbox(config.owner);
 	}
 
 	private updateReceiverFromConfig(config = this.config.data) {

@@ -30,7 +30,7 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 					event TEXT(64) REFERENCES events(id),
 					label TEXT
 				)
-			`
+			`,
 			)
 			.run();
 
@@ -56,7 +56,7 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 		options?: {
 			preserveEphemeral?: boolean;
 			preserveReplaceable?: boolean;
-		}
+		},
 	) {
 		const inserted = super.addEvent(event, options);
 

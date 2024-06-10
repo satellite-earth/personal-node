@@ -8,7 +8,6 @@ import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';
 import { logger } from '../logger.js';
 import LocalDatabase from '../app/database.js';
-import { BOOTSTRAP_RELAYS } from '../env.js';
 
 type EventMap = {
 	open: [string, string];
@@ -33,8 +32,8 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		this.addressBook = addressBook || new AddressBook(eventStore, pool);
 	}
 
-	updateExplictRelays(relays: string[] = []) {
-		this.explicitRelays = relays.length > 0 ? relays : BOOTSTRAP_RELAYS;
+	updateExplicitRelays(relays: string[]) {
+		this.explicitRelays = relays;
 	}
 
 	/** sends a DM event to the receivers inbox relays */
