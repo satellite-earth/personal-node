@@ -1,15 +1,15 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { type IncomingMessage } from 'http';
+import { ControlResponse } from '@satellite-earth/core/types/control-api/index.js';
 
 import type App from '../../app/index.js';
 import { logger } from '../../logger.js';
-import { ControlResponse } from '@satellite-earth/core/types/control-api/index.js';
 
 export type ControlMessage = ['CONTROL', string, string, ...any[]];
 export interface ControlMessageHandler {
 	app: App;
 	name: string;
-	handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage): boolean;
+	handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage): boolean | Promise<boolean>;
 }
 
 /** handles web socket connections and 'CONTROL' messages */
@@ -63,22 +63,23 @@ export default class ControlApi {
 	}
 
 	/** handle a ws message */
-	handleRawMessage(ws: WebSocket | NodeJS.Process, message: Buffer) {
+	async handleRawMessage(ws: WebSocket | NodeJS.Process, message: Buffer) {
 		try {
 			const data = JSON.parse(message.toString()) as string[];
 
 			if (Array.isArray(data) && data[0] === 'CONTROL' && typeof data[1] === 'string' && typeof data[2] === 'string') {
 				if (this.authenticatedConnections.has(ws) || data[1] === 'AUTH') {
-					this.handleMessage(ws, data as ControlMessage);
+					await this.handleMessage(ws, data as ControlMessage);
 				}
 			}
 		} catch (err) {
-			console.log(err);
+			this.log('Failed to handle Control message', message);
+			this.log(err);
 		}
 	}
 
 	/** handle a ['CONTROL', ...] message */
-	handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage) {
+	async handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage) {
 		// handle ['CONTROL', 'AUTH', <code>] messages
 		if (message[1] === 'AUTH' && message[2] === 'CODE') {
 			const code = message[3];
@@ -93,7 +94,7 @@ export default class ControlApi {
 
 		const handler = this.handlers.get(message[1]);
 		if (handler) {
-			return handler.handleMessage(sock, message);
+			return await handler.handleMessage(sock, message);
 		}
 
 		this.log('Failed to handle Control message', message);

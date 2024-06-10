@@ -31,6 +31,7 @@ import { getOutboxes } from '../helpers/mailboxes.js';
 import { AbstractRelay } from 'nostr-tools/abstract-relay';
 import CautiousPool from '../modules/cautious-pool.js';
 import { PrivateNodeConfig } from '@satellite-earth/core/types/private-node-config.js';
+import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 
 export default class App {
 	running = false;
@@ -45,7 +46,7 @@ export default class App {
 	control: ControlApi;
 	statusLog = new StatusLog();
 
-	pool: SimplePool;
+	pool: CautiousPool;
 	addressBook: AddressBook;
 	profileBook: ProfileBook;
 	directMessageManager: DirectMessageManager;
@@ -171,6 +172,7 @@ export default class App {
 		this.control.registerHandler(new DatabaseActions(this));
 		this.control.registerHandler(new DirectMessageActions(this));
 		this.control.registerHandler(new NotificationActions(this));
+		this.control.registerHandler(new RemoteAuthActions(this));
 
 		if (process.send) this.control.attachToProcess(process);
 

@@ -1,13 +1,16 @@
 import EventEmitter from 'events';
-import { SimplePool } from 'nostr-tools';
+import { SimplePool, VerifiedEvent } from 'nostr-tools';
 import { AbstractRelay } from 'nostr-tools/relay';
 import { normalizeURL } from 'nostr-tools/utils';
+
 import { logger } from '../logger.js';
 
 export type TestRelay = (relay: AbstractRelay, challenge: string) => boolean;
 
 type EventMap = {
 	challenge: [AbstractRelay, string];
+	connected: [AbstractRelay];
+	closed: [AbstractRelay];
 };
 
 export default class CautiousPool extends SimplePool {
@@ -15,8 +18,10 @@ export default class CautiousPool extends SimplePool {
 	isSelf?: TestRelay;
 	blacklist = new Set<string>();
 
-	events = new EventEmitter<EventMap>();
+	challenges = new Map<string, string>();
+	authenticated = new Map<string, boolean>();
 
+	emitter = new EventEmitter<EventMap>();
 	constructor(isSelf?: TestRelay) {
 		super();
 
@@ -34,8 +39,24 @@ export default class CautiousPool extends SimplePool {
 		const relay = await super.ensureRelay(url, params);
 		if (this.checkRelay(relay)) throw new Error('Cant connect to self');
 
+		this.emitter.emit('connected', relay);
+
 		relay._onauth = (challenge) => {
-			this.checkRelay(relay, challenge);
+			if (this.checkRelay(relay, challenge)) {
+				this.authenticated.set(relay.url, false);
+				this.challenges.set(relay.url, challenge);
+				this.emitter.emit('challenge', relay, challenge);
+			}
+		};
+
+		relay.onnotice = () => {
+			
+		}
+
+		relay.onclose = () => {
+			this.challenges.delete(relay.url);
+			this.authenticated.delete(relay.url);
+			this.emitter.emit('closed', relay);
 		};
 
 		return relay;
@@ -46,8 +67,6 @@ export default class CautiousPool extends SimplePool {
 		challenge = challenge || relay.challenge;
 
 		if (challenge) {
-			this.events.emit('challenge', relay, challenge);
-
 			if (this.isSelf && this.isSelf(relay, challenge)) {
 				this.log(`Found ${relay.url} connects to ourselves, adding to blacklist`);
 				this.blacklist.add(relay.url);
@@ -60,5 +79,20 @@ export default class CautiousPool extends SimplePool {
 		}
 
 		return false;
+	}
+
+	isAuthenticated(relay: string | AbstractRelay) {
+		return !!this.authenticated.get(typeof relay === 'string' ? relay : relay.url);
+	}
+
+	async authenticate(url: string | AbstractRelay, auth: VerifiedEvent) {
+		const relay = typeof url === 'string' ? await this.ensureRelay(url) : url;
+
+		return await relay.auth(async (draft) => auth);
+	}
+
+	[Symbol.iterator](): IterableIterator<[string, AbstractRelay]> {
+		// @ts-expect-error
+		return this.relays[Symbol.iterator]();
 	}
 }
