@@ -5,23 +5,26 @@ import _throttle from 'lodash.throttle';
 import createDefer, { Deferred } from '../helpers/deferred.js';
 import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
+import App from '../app/index.js';
 
 export default class ProfileBook {
 	log = logger.extend('ProfileBook');
-	pool: SimplePool;
-	eventStore: IEventStore;
+	app: App;
+	// pool: SimplePool;
+	// eventStore: IEventStore;
 	extraRelays = COMMON_CONTACT_RELAYS;
 
-	constructor(eventStore: IEventStore, pool?: SimplePool) {
-		this.eventStore = eventStore;
-		this.pool = pool || new SimplePool();
+	constructor(app: App) {
+		// this.eventStore = eventStore;
+		// this.pool = pool || new SimplePool();
+		this.app = app;
 	}
 
 	private cache = new Map<string, NostrEvent>();
 	getProfile(pubkey: string) {
 		if (this.cache.has(pubkey)) return this.cache.get(pubkey)!;
 
-		const event = this.eventStore.getEventsForFilters([{ kinds: [kinds.Metadata], authors: [pubkey] }])?.[0];
+		const event = this.app.eventStore.getEventsForFilters([{ kinds: [kinds.Metadata], authors: [pubkey] }])?.[0];
 		if (event) {
 			this.cache.set(pubkey, event);
 			return event;
@@ -30,7 +33,7 @@ export default class ProfileBook {
 
 	handleEvent(event: NostrEvent) {
 		if (event.kind === kinds.Metadata) {
-			this.eventStore.addEvent(event);
+			this.app.eventStore.addEvent(event);
 			const current = this.cache.get(event.pubkey);
 			if (!current || event.created_at > current.created_at) this.cache.set(event.pubkey, event);
 		}
@@ -74,7 +77,7 @@ export default class ProfileBook {
 			for (const [relay, filter] of Object.entries(filters)) requests[relay] = [filter];
 
 			return new Promise<void>((res) => {
-				const sub = this.pool.subscribeManyMap(requests, {
+				const sub = this.app.pool.subscribeManyMap(requests, {
 					onevent: (event) => this.handleEvent(event),
 					oneose: () => {
 						sub.close();

@@ -49,9 +49,7 @@ export default class CautiousPool extends SimplePool {
 			}
 		};
 
-		relay.onnotice = () => {
-			
-		}
+		relay.onnotice = () => {};
 
 		relay.onclose = () => {
 			this.challenges.delete(relay.url);

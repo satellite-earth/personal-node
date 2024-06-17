@@ -20,7 +20,7 @@ export default class NotificationActions implements ControlMessageHandler {
 				return true;
 
 			case 'LIST':
-				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'LIST', this.app.notifications.state.data.subscriptions]);
+				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'LIST', this.app.state.data.subscriptions]);
 				return true;
 
 			case 'REGISTER':

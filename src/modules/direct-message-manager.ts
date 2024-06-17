@@ -1,13 +1,14 @@
-import { IEventStore } from '@satellite-earth/core';
-import { NostrEvent, SimplePool, kinds } from 'nostr-tools';
+//import { IEventStore } from '@satellite-earth/core';
+import { NostrEvent, kinds } from 'nostr-tools';
 import { SubCloser } from 'nostr-tools/abstract-pool';
 import { Subscription } from 'nostr-tools/abstract-relay';
 import { EventEmitter } from 'events';
 
-import AddressBook from './address-book.js';
+//import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';
 import { logger } from '../logger.js';
-import LocalDatabase from '../app/database.js';
+//import LocalDatabase from '../app/database.js';
+import App from '../app/index.js';
 
 type EventMap = {
 	open: [string, string];
@@ -17,24 +18,35 @@ type EventMap = {
 /** handles sending and receiving direct messages */
 export default class DirectMessageManager extends EventEmitter<EventMap> {
 	log = logger.extend('DirectMessageManager');
-	database: LocalDatabase;
-	eventStore: IEventStore;
-	addressBook: AddressBook;
-	pool: SimplePool;
+	app: App;
+	// database: LocalDatabase;
+	// eventStore: IEventStore;
+	// addressBook: AddressBook;
+	// pool: SimplePool;
 
 	private explicitRelays: string[] = [];
 
-	constructor(database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool) {
+	constructor(
+		app: App /*database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool*/,
+	) {
 		super();
-		this.database = database;
-		this.eventStore = eventStore;
-		this.pool = pool || new SimplePool();
-		this.addressBook = addressBook || new AddressBook(eventStore, pool);
+		this.app = app;
+		// this.database = database;
+		// this.eventStore = eventStore;
+		// this.pool = pool || new SimplePool();
+		// this.addressBook = addressBook || new AddressBook(eventStore, pool);
+
+		// Load profiles for particpants when
+		// a conversation thread is opened
+		this.on('open', (a, b) => {
+			this.app.profileBook.loadProfile(a, this.app.addressBook.getOutboxes(a));
+			this.app.profileBook.loadProfile(b, this.app.addressBook.getOutboxes(b));
+		});
 	}
 
-	updateExplicitRelays(relays: string[]) {
-		this.explicitRelays = relays;
-	}
+	// updateExplicitRelays(relays: string[]) {
+	// 	this.explicitRelays = relays;
+	// }
 
 	/** sends a DM event to the receivers inbox relays */
 	async forwardMessage(event: NostrEvent) {
@@ -43,11 +55,11 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const addressedTo = event.tags.find((t) => t[0] === 'p')?.[1];
 		if (!addressedTo) return;
 
-		const mailboxes = await this.addressBook.loadMailboxes(addressedTo);
+		const mailboxes = await this.app.addressBook.loadMailboxes(addressedTo);
 
 		const inboxes = getInboxes(mailboxes, this.explicitRelays);
 		this.log(`Forwarding message to ${inboxes.length} relays`);
-		const results = await Promise.allSettled(this.pool.publish(inboxes, event));
+		const results = await Promise.allSettled(this.app.pool.publish(inboxes, event));
 
 		return results;
 	}
@@ -62,7 +74,7 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		if (this.watching.has(pubkey)) return;
 
 		this.log(`Watching ${pubkey} inboxes for mail`);
-		const mailboxes = await this.addressBook.loadMailboxes(pubkey);
+		const mailboxes = await this.app.addressBook.loadMailboxes(pubkey);
 		if (!mailboxes) {
 			this.log(`Failed to get ${pubkey} mailboxes`);
 			return;
@@ -73,10 +85,10 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 
 		for (const url of relays) {
 			const subscribe = async () => {
-				const relay = await this.pool.ensureRelay(url);
+				const relay = await this.app.pool.ensureRelay(url);
 				const sub = relay.subscribe([{ kinds: [kinds.EncryptedDirectMessage], '#p': [pubkey] }], {
 					onevent: (event) => {
-						this.eventStore.addEvent(event);
+						this.app.eventStore.addEvent(event);
 					},
 					onclose: () => {
 						// reconnect if we are still watching this pubkey
@@ -110,8 +122,8 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 
 		if (this.subscriptions.has(key)) return;
 
-		const aMailboxes = await this.addressBook.loadMailboxes(a);
-		const bMailboxes = await this.addressBook.loadMailboxes(b);
+		const aMailboxes = await this.app.addressBook.loadMailboxes(a);
+		const bMailboxes = await this.app.addressBook.loadMailboxes(b);
 
 		// If inboxes for either user cannot be determined, either because nip65
 		// was not found, or nip65 had no listed read relays, fall back to explicit
@@ -121,12 +133,12 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const relays = new Set([...aInboxes, ...bInboxes]);
 
 		let events = 0;
-		const sub = this.pool.subscribeMany(
+		const sub = this.app.pool.subscribeMany(
 			Array.from(relays),
 			[{ kinds: [kinds.EncryptedDirectMessage], authors: [a, b], '#p': [a, b] }],
 			{
 				onevent: (event) => {
-					events += +this.eventStore.addEvent(event);
+					events += +this.app.eventStore.addEvent(event);
 				},
 				oneose: () => {
 					if (events) this.log(`Found ${events} new messages`);
@@ -150,6 +162,6 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 	}
 
 	getKind4MessageCount(pubkey: string) {
-		return this.database.getKind4MessageCount(pubkey);
+		return this.app.database.getKind4MessageCount(pubkey);
 	}
 }

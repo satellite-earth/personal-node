@@ -6,9 +6,9 @@ import { PrivateNodeConfig } from '@satellite-earth/core/types/private-node-conf
 import { ReactiveJsonFileSync } from '@satellite-earth/core';
 
 export const defaultConfig: PrivateNodeConfig = {
-	pubkeys: [],
-	relays: [],
-	cacheLevel: 2,
+	//pubkeys: [],
+	//relays: [],
+	//cacheLevel: 2,
 	autoListen: false,
 	logsEnabled: true,
 	requireReadAuth: false,

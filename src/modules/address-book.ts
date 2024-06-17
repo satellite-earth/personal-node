@@ -1,28 +1,31 @@
-import { IEventStore } from '@satellite-earth/core';
-import { Filter, NostrEvent, SimplePool, kinds } from 'nostr-tools';
+//import { IEventStore } from '@satellite-earth/core';
+import { Filter, NostrEvent, kinds } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 
 import createDefer, { Deferred } from '../helpers/deferred.js';
 import { getInboxes, getOutboxes } from '../helpers/mailboxes.js';
-import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
+import App from '../app/index.js';
+import { COMMON_CONTACT_RELAYS } from '../env.js';
 
 export default class AddressBook {
 	log = logger.extend('AddressBook');
-	pool: SimplePool;
-	eventStore: IEventStore;
-	extraRelays = COMMON_CONTACT_RELAYS;
+	app: App;
+	// pool: SimplePool;
+	// eventStore: IEventStore;
+	//extraRelays = COMMON_CONTACT_RELAYS;
 
-	constructor(eventStore: IEventStore, pool?: SimplePool) {
-		this.eventStore = eventStore;
-		this.pool = pool || new SimplePool();
+	constructor(/*eventStore: IEventStore, pool?: SimplePool*/ app: App) {
+		// this.eventStore = eventStore;
+		// this.pool = pool || new SimplePool();
+		this.app = app;
 	}
 
 	private cache = new Map<string, NostrEvent>();
 	getMailboxes(pubkey: string) {
 		if (this.cache.has(pubkey)) return this.cache.get(pubkey)!;
 
-		const event = this.eventStore.getEventsForFilters([{ kinds: [kinds.RelayList], authors: [pubkey] }])?.[0];
+		const event = this.app.eventStore.getEventsForFilters([{ kinds: [kinds.RelayList], authors: [pubkey] }])?.[0];
 		if (event) {
 			this.cache.set(pubkey, event);
 			return event;
@@ -40,7 +43,7 @@ export default class AddressBook {
 
 	handleEvent(event: NostrEvent) {
 		if (event.kind === kinds.RelayList) {
-			this.eventStore.addEvent(event);
+			this.app.eventStore.addEvent(event);
 			const current = this.cache.get(event.pubkey);
 			if (!current || event.created_at > current.created_at) this.cache.set(event.pubkey, event);
 		}
@@ -72,7 +75,7 @@ export default class AddressBook {
 			};
 
 			for (const [pubkey, relays] of this.fetching) {
-				for (const relay of this.extraRelays) {
+				for (const relay of /*this.extraRelays*/ COMMON_CONTACT_RELAYS) {
 					addPubkeyToRelayFilter(relay, pubkey);
 				}
 				for (const relay of relays) {
@@ -84,7 +87,7 @@ export default class AddressBook {
 			for (const [relay, filter] of Object.entries(filters)) requests[relay] = [filter];
 
 			return new Promise<void>((res) => {
-				const sub = this.pool.subscribeManyMap(requests, {
+				const sub = this.app.pool.subscribeManyMap(requests, {
 					onevent: (event) => this.handleEvent(event),
 					oneose: () => {
 						sub.close();

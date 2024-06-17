@@ -1,34 +1,36 @@
-import { IEventStore } from '@satellite-earth/core';
+//import { IEventStore } from '@satellite-earth/core';
 import { NotificationType, WebSubscription } from '@satellite-earth/core/types/control-api/notifications.js';
 import { NostrEvent, kinds } from 'nostr-tools';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import dayjs from 'dayjs';
 import webPush from 'web-push';
 
-import AppState from './app-state.js';
+//import AppState from './app-state.js';
 import { logger } from '../logger.js';
+import App from '../app/index.js';
 
 export default class NotificationsManager {
 	log = logger.extend('NotificationsManager');
+	app: App;
 	lastRead: number = dayjs().unix();
 
-	owner?: string;
-	state: AppState;
+	// owner?: string;
+	// state: AppState;
 	keys: webPush.VapidKeys = webPush.generateVAPIDKeys();
 
 	get subscriptions() {
-		return this.state.data.subscriptions;
+		return this.app.state.data.subscriptions;
 	}
 	set subscriptions(v) {
-		this.state.data.subscriptions = v;
+		this.app.state.data.subscriptions = v;
 	}
 
-	eventStore: IEventStore;
-	constructor(eventStore: IEventStore, state: AppState) {
-		this.eventStore = eventStore;
-		this.state = state;
-
-		this.eventStore.on('event:inserted', this.handleEvent.bind(this));
+	//eventStore: IEventStore;
+	constructor(/*eventStore: IEventStore, state: AppState*/ app: App) {
+		// this.eventStore = eventStore;
+		// this.state = state;
+		this.app = app;
+		this.app.eventStore.on('event:inserted', this.handleEvent.bind(this));
 	}
 
 	registerSubscription(sub: WebSubscription) {
@@ -45,11 +47,11 @@ export default class NotificationsManager {
 
 	handleEvent(event: NostrEvent) {
 		if (event.kind !== kinds.EncryptedDirectMessage) return;
-		if (getDMRecipient(event) !== this.owner) return;
+		if (getDMRecipient(event) !== this.app.config.data.owner) return;
 
 		if (event.created_at > this.lastRead) {
 			// TODO: this should be retrieved from a ProfileManager class
-			const profile = this.eventStore.getEventsForFilters([{ kinds: [0], authors: [event.pubkey] }])?.[0];
+			const profile = this.app.eventStore.getEventsForFilters([{ kinds: [0], authors: [event.pubkey] }])?.[0];
 
 			this.notify({ sender: profile, event });
 		}
