@@ -217,6 +217,17 @@ export default class App {
 
 		// only allow the owner to NIP-42 authenticate with the relay
 		this.relay.checkAuth = (ws, auth) => {
+			// If owner is not set, update it to match the pubkey
+			// that signed the auth message. This allows the user
+			// to set the owner pubkey from the initial login when
+			// setting up their personal node (the owner pubkey may
+			// otherwise be set using the env var `OWNER_PUBKEY`)
+			if (!this.config.data.owner) {
+				this.config.update((config) => {
+					config.owner = auth.pubkey;
+				});
+				return true;
+			}
 			if (auth.pubkey !== this.config.data.owner) return 'Pubkey dose not match owner';
 			return true;
 		};
