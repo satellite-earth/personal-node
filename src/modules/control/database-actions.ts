@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import os from 'node:os';
-import { DatabaseMessage, DatabaseResponse, DatabaseStats } from '@satellite-earth/core/types/control-api.js';
+import { DatabaseMessage, DatabaseResponse, DatabaseStats } from '@satellite-earth/core/types/control-api/database.js';
 
 import App from '../../app/index.js';
 import { ControlMessageHandler } from './control-api.js';

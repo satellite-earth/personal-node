@@ -1,15 +1,16 @@
 #!/bin/env node
+import process from 'node:process';
 import WebSocket, { WebSocketServer } from 'ws';
-import express from 'express';
-import path from 'path';
-import { createServer } from 'http';
-import { useWebSocketImplementation } from 'nostr-tools';
+import express, { Request } from 'express';
+import path from 'node:path';
+import { createServer } from 'node:http';
 import { mkdirp } from 'mkdirp';
+import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
-import { PORT, DATA_PATH, AUTH } from './env.js';
+import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { logger } from './logger.js';
 
@@ -55,11 +56,50 @@ const expressServer = express();
 
 expressServer.use(blobServer.router);
 
-// host the community-ui for the node
-const dashboardDir = path.dirname(
-	importMetaResolve('@satellite-earth/community-ui', import.meta.url).replace('file://', ''),
-);
-expressServer.use(express.static(dashboardDir));
+function getPublicRelayAddressFromRequest(req: Request) {
+	let url: URL;
+	if (PUBLIC_ADDRESS) {
+		url = new URL(PUBLIC_ADDRESS);
+	} else {
+		url = new URL('/', req.protocol + '://' + req.hostname);
+		url.port = String(PORT);
+	}
+	url.protocol = req.protocol === 'https:' ? 'wss:' : 'ws:';
+
+	return url;
+}
+
+expressServer.get('/', (req, res, next) => {
+	// if the app isn't setup redirect to the setup view
+	if (!app.config.data.owner) {
+		logger('Redirecting to setup view');
+
+		const url = new URL('/setup', REDIRECT_APP_URL || req.protocol + '://' + req.headers['host']);
+		const relay = getPublicRelayAddressFromRequest(req);
+		url.searchParams.set('relay', relay.toString());
+		url.searchParams.set('auth', AUTH);
+		res.redirect(url.toString());
+	} else return next();
+});
+
+if (REDIRECT_APP_URL) {
+	// TODO: add publicly assessable address so app can connect
+	expressServer.get('*', (req, res) => {
+		// redirect to other web ui
+		const url = new URL('/connect', REDIRECT_APP_URL);
+		const relay = getPublicRelayAddressFromRequest(req);
+		url.searchParams.set('relay', relay.toString());
+
+		res.redirect(url.toString());
+	});
+} else {
+	// serve the web ui
+	const appDir = path.dirname(importMetaResolve('@satellite-earth/web-ui', import.meta.url).replace('file://', ''));
+	expressServer.use(express.static(appDir));
+	expressServer.get('*', (req, res) => {
+		res.sendFile(path.resolve(appDir, 'index.html'));
+	});
+}
 
 server.on('request', expressServer);
 
@@ -85,3 +125,10 @@ async function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+process.on('unhandledRejection', (reason, promise) => {
+	if (reason instanceof Error) {
+		console.log('Unhandled Rejection');
+		console.log(reason);
+	} else console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+});

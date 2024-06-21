@@ -1,7 +1,8 @@
 import { type Database } from 'better-sqlite3';
 import { Debugger } from 'debug';
-import { Filter, NostrEvent, Relay, Subscription, kinds } from 'nostr-tools';
+import { Filter, NostrEvent, Relay, kinds } from 'nostr-tools';
 import { NostrRelay, RelayActions } from '@satellite-earth/core';
+import { Subscription } from 'nostr-tools/abstract-relay';
 
 import { LabeledEventStore } from './labeled-event-store.js';
 import { HyperConnectionManager } from './hyper-connection-manager.js';
@@ -32,13 +33,16 @@ export class CommunityProxy {
 		this.eventStore.setup();
 		this.relay = new NostrRelay(this.eventStore);
 
-		this.relay.on('event:received', (event) => {
+		// handle incoming events and pass them to the upstream relay
+		this.relay.registerEventHandler(async (ctx, next) => {
 			// send event to upstream relay
 			if (this.upstream) {
-				this.log('Sending event to upstream', event.id);
-				this.upstream.publish(event);
-			}
+				const result = this.upstream.publish(ctx.event);
+				this.log('Sent event to upstream', ctx.event.id);
+				return result;
+			} else throw new Error('Not connected to upstream');
 		});
+
 		this.relay.on('subscription:created', (subscription, ws) => {
 			this.syncChannelsFromFilters(subscription.filters);
 		});

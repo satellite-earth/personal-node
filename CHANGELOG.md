@@ -1,4 +1,4 @@
-# @satellite-earth/private-node
+# @satellite-earth/personal-node
 
 ## 0.2.2
 

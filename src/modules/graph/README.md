@@ -1,1 +1,0 @@
-satellite-graph is a class that helps analyze nostr contact lists

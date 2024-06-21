@@ -20,16 +20,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
 
       - name: Build
-        run: yarn build
+        run: pnpm build
 
       - name: Publish
-        run: yarn publish
+        run: pnpm publish

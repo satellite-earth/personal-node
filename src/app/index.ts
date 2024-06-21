@@ -1,11 +1,15 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
+import { kinds } from 'nostr-tools';
+import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
+import webPush from 'web-push';
 
 import Database from './database.js';
 import Graph from '../modules/graph/index.js';
 
-import { AUTH, DATA_PATH } from '../env.js';
+import { SENSITIVE_KINDS } from '../const.js';
+import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
 import ControlApi from '../modules/control/control-api.js';
@@ -15,29 +19,64 @@ import Receiver from '../modules/receiver/index.js';
 import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
-import { formatPubkey } from '../helpers/pubkey.js';
-import { NostrEvent } from 'nostr-tools';
+import { isHex } from '../helpers/pubkey.js';
+import DirectMessageManager from '../modules/direct-message-manager.js';
+import DirectMessageActions from '../modules/control/dm-actions.js';
+import AddressBook from '../modules/address-book.js';
+import NotificationsManager from '../modules/notifications-manager.js';
+import AppState from '../modules/app-state.js';
+import NotificationActions from '../modules/control/notification-actions.js';
+import ProfileBook from '../modules/profile-book.js';
+import { getOutboxes } from '../helpers/mailboxes.js';
+import { AbstractRelay } from 'nostr-tools/abstract-relay';
+import CautiousPool from '../modules/cautious-pool.js';
+//import { PrivateNodeConfig } from '@satellite-earth/core/types/private-node-config.js';
+import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 
 export default class App {
 	running = false;
-
 	config: ConfigManager;
+	state: AppState;
 	database: Database;
 	eventStore: IEventStore;
 	graph: Graph;
 	relay: NostrRelay;
 	receiver: Receiver;
 	control: ControlApi;
-	statusLog = new StatusLog();
-
+	statusLog: StatusLog;
+	pool: CautiousPool;
+	addressBook: AddressBook;
+	profileBook: ProfileBook;
+	directMessageManager: DirectMessageManager;
+	notifications: NotificationsManager;
 	blobMetadata: IBlobMetadataStore;
 	blobStorage: LocalStorage;
 	blobDownloader: BlobDownloader;
 
 	constructor(dataPath: string) {
 		const configPath = path.join(dataPath, 'node.json');
+		const statePath = path.join(dataPath, 'state.json');
+
+		this.state = new AppState(statePath);
+		this.state.read();
 
 		this.config = new ConfigManager(configPath);
+		this.config.read();
+
+		this.statusLog = new StatusLog(this);
+
+		// setup VAPID keys if they don't exist
+		if (!this.config.data.vapidPrivateKey || !this.config.data.vapidPublicKey) {
+			const keys = webPush.generateVAPIDKeys();
+			this.config.data.vapidPublicKey = keys.publicKey;
+			this.config.data.vapidPrivateKey = keys.privateKey;
+			this.config.write();
+		}
+
+		// set owner pubkey from env variable
+		if (!this.config.data.owner && OWNER_PUBKEY && isHex(OWNER_PUBKEY)) {
+			this.config.data.owner = OWNER_PUBKEY;
+		}
 
 		// Init embedded sqlite database
 		this.database = new Database({
@@ -45,21 +84,96 @@ export default class App {
 			reportInterval: 1000,
 		});
 
+		// Recognize local relay by matching auth string
+		this.pool = new CautiousPool((relay: AbstractRelay, challenge: string) => {
+			for (const [socket, auth] of this.relay.auth) {
+				if (auth.challenge === challenge) return true;
+			}
+			return false;
+		});
+
+		// Intialize the event store
 		this.eventStore = new SQLiteEventStore(this.database.db);
 		this.eventStore.setup();
 
+		// Setup managers user contacts and profiles
+		this.addressBook = new AddressBook(this /*this.eventStore, this.pool*/);
+		this.profileBook = new ProfileBook(this /*this.eventStore, this.pool*/);
+
+		// NOTE don't need extra relays . . . bootstrap relays
+		// can be provided as env var on startup, falling back to
+		// hardcoded list
+
+		// set extra relays on address and profile book
+		// this.addressBook.extraRelays = [
+		// 	...COMMON_CONTACT_RELAYS,
+		// 	...Object.values(this.config.data.relays).map((r) => r.url),
+		// ];
+		// this.profileBook.extraRelays = [
+		// 	...COMMON_CONTACT_RELAYS,
+		// 	...Object.values(this.config.data.relays).map((r) => r.url),
+		// ];
+		// this.config.on('changed', (config) => {
+		// 	this.addressBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
+		// 	this.profileBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
+		// });
+
+		// Handle possible additional actions when
+		// the event store receives a new message
+		this.eventStore.on('event:inserted', (event) => {
+			// Fetch profiles for all incoming DMs
+			switch (event.kind) {
+				case kinds.EncryptedDirectMessage:
+					const profile = this.profileBook.getProfile(event.pubkey);
+					if (!profile) {
+						this.profileBook.loadProfile(event.pubkey, this.addressBook.getOutboxes(event.pubkey));
+
+						this.addressBook.loadMailboxes(event.pubkey).then((mailboxes) => {
+							this.profileBook.loadProfile(event.pubkey, mailboxes ? getOutboxes(mailboxes) : undefined);
+						});
+					}
+					break;
+			}
+		});
+
 		// Initialize model of the social graph
+		// TODO MAYBE `Graph` logic should be folded into AddressBook and ProfileBook
 		this.graph = new Graph();
 
+		// Setup the notifications manager
+		this.notifications = new NotificationsManager(this /*this.eventStore, this.state*/);
+		this.notifications.keys = {
+			publicKey: this.config.data.vapidPublicKey!,
+			privateKey: this.config.data.vapidPrivateKey!,
+		};
+
+		// NOTE notificatio
+		//this.notifications.owner = this.config.data.owner;
+		//this.config.on('changed', (config) => (this.notifications.owner = config.owner));
+
 		// Initializes receiver for pulling data from remote relays
-		this.receiver = new Receiver(this.graph);
-		this.updateReceiverFromConfig();
+		this.receiver = new Receiver(this);
+		//this.updateReceiverFromConfig();
 
 		// update the receiver options when the config changes
-		this.config.on('config:updated', (config, field) => {
-			this.updateReceiverFromConfig(config);
-			this.statusLog.log(`[CONFIG] set ${field}`);
-		});
+		// this.config.on('changed', (config, field) => {
+		// 	//this.updateReceiverFromConfig(config);
+		// 	this.statusLog.log(`[CONFIG] set ${field}`);
+		// });
+
+		// DM manager
+		this.directMessageManager = new DirectMessageManager(
+			this /*this.database, this.eventStore, this.addressBook, this.pool*/,
+		);
+
+		//MessageManager();
+		//this.config.on('changed', this.updateDirectMessageManager.bind(this));
+
+		// update profiles when conversations are opened
+		// this.directMessageManager.on('open', (a, b) => {
+		// 	this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
+		// 	this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
+		// });
 
 		// API for controlling the node
 		this.control = new ControlApi(this, AUTH);
@@ -67,6 +181,9 @@ export default class App {
 		this.control.registerHandler(new ReceiverActions(this));
 		this.control.registerHandler(new LogActions(this));
 		this.control.registerHandler(new DatabaseActions(this));
+		this.control.registerHandler(new DirectMessageActions(this));
+		this.control.registerHandler(new NotificationActions(this));
+		this.control.registerHandler(new RemoteAuthActions(this));
 
 		if (process.send) this.control.attachToProcess(process);
 
@@ -78,6 +195,7 @@ export default class App {
 		this.receiver.on('started', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER LISTENING'));
 		this.receiver.on('stopped', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER PAUSED'));
 
+		/*
 		this.receiver.on('event:received', (event) => {
 			// Pass received events to the relay
 			this.eventStore.addEvent(event);
@@ -91,11 +209,7 @@ export default class App {
 			// log event in status log
 			this.logInsertedEvent(event);
 		});
-
-		// Handle new events being saved
-		this.eventStore.on('event:inserted', (event) => {
-			// this.control.handleInserted(event);
-		});
+		*/
 
 		this.relay = new NostrRelay(this.eventStore);
 		this.relay.sendChallenge = true;
@@ -103,19 +217,87 @@ export default class App {
 
 		// only allow the owner to NIP-42 authenticate with the relay
 		this.relay.checkAuth = (ws, auth) => {
-			if (auth.pubkey !== this.config.config.owner) return 'Pubkey dose not match owner';
+			// If owner is not set, update it to match the pubkey
+			// that signed the auth message. This allows the user
+			// to set the owner pubkey from the initial login when
+			// setting up their personal node (the owner pubkey may
+			// otherwise be set using the env var `OWNER_PUBKEY`)
+			if (!this.config.data.owner) {
+				this.config.update((config) => {
+					config.owner = auth.pubkey;
+				});
+				return true;
+			}
+			if (auth.pubkey !== this.config.data.owner) return 'Pubkey dose not match owner';
 			return true;
 		};
 
 		// when the owner to NIP-42 authenticates with the relay pass it along to the control
 		this.relay.on('socket:auth', (ws, auth) => {
-			if (auth.pubkey === this.config.config.owner) {
+			if (auth.pubkey === this.config.data.owner) {
 				this.control.authenticatedConnections.add(ws);
 			}
 		});
+
+		// if socket is unauthenticated only allow owner's events and incoming DMs
+		this.relay.registerEventHandler((ctx, next) => {
+			const auth = ctx.relay.getSocketAuth(ctx.socket);
+
+			if (!auth) {
+				// is it an incoming DM for the owner?
+				if (ctx.event.kind === kinds.EncryptedDirectMessage && getDMRecipient(ctx.event) === this.config.data.owner)
+					return next();
+
+				if (ctx.event.pubkey === this.config.data.owner) return next();
+
+				throw new Error(ctx.relay.makeAuthRequiredReason('This relay only accepts events from its owner'));
+			}
+
+			return next();
+		});
+
+		// handle forwarding direct messages by owner
+		this.relay.registerEventHandler(async (ctx, next) => {
+			if (ctx.event.kind === kinds.EncryptedDirectMessage && ctx.event.pubkey === this.config.data.owner) {
+				// send direct message
+				const results = await this.directMessageManager.forwardMessage(ctx.event);
+
+				if (!results || !results.some((p) => p.status === 'fulfilled')) throw new Error('Failed to forward message');
+				return `Forwarded message to ${results.filter((p) => p.status === 'fulfilled').length}/${results.length} relays`;
+			} else return next();
+		});
+
+		// block subscriptions for sensitive kinds unless NIP-42 auth
+		this.relay.registerSubscriptionFilter((ctx, next) => {
+			const hasSensitiveKinds = ctx.filters.some(
+				(filter) => filter.kinds && SENSITIVE_KINDS.some((k) => filter.kinds?.includes(k)),
+			);
+
+			if (hasSensitiveKinds) {
+				const auth = ctx.relay.getSocketAuth(ctx.socket);
+				if (!auth) throw new Error(ctx.relay.makeAuthRequiredReason('Cant view sensitive events without auth'));
+			}
+
+			return next();
+		});
 	}
 
-	private updateReceiverFromConfig(config = this.config.config) {
+	/** config -> direct message manager */
+	/*
+	private updateDirectMessageManager(config: PrivateNodeConfig = this.config.data) {
+		const relays = config.relays.map((r) => r.url);
+		this.directMessageManager.updateExplicitRelays(relays.length > 0 ? relays : BOOTSTRAP_RELAYS);
+
+		if (config.owner) this.directMessageManager.watchInbox(config.owner);
+	}
+	*/
+
+	// TODO this method can be removed
+	// the receiver just needs to know the
+	// owner pubkey and have access to the
+	// address book to get the outboxes
+	/*
+	private updateReceiverFromConfig(config = this.config.data) {
 		this.receiver.pubkeys.clear();
 		this.receiver.explicitRelays.clear();
 
@@ -126,7 +308,9 @@ export default class App {
 
 		this.receiver.cacheLevel = config.cacheLevel;
 	}
+	*/
 
+	/*
 	private logInsertedEvent(event: NostrEvent) {
 		const profile = this.graph.getProfile(event.pubkey);
 		const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
@@ -140,18 +324,18 @@ export default class App {
 
 		this.statusLog.log(`[EVENT] KIND ${event.kind} FROM ${name}` + (preview ? ` "${preview}"` : ''));
 	}
+	*/
 
 	start() {
 		this.running = true;
+		this.config.read();
+		this.state.read();
 
 		const events = this.eventStore.getEventsForFilters([{ kinds: [0, 3] }]);
 
 		for (let event of events) {
 			this.graph.add(event);
 		}
-
-		// Set initial stats for the database
-		// this.control.updateDatabaseStatus();
 
 		this.tick();
 	}
@@ -164,9 +348,10 @@ export default class App {
 
 	stop() {
 		this.running = false;
+		this.config.write();
+		this.state.write();
 		this.relay.stop();
 		this.database.destroy();
 		this.receiver.destroy();
-		// this.control.stop();
 	}
 }
