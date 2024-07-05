@@ -1,17 +1,27 @@
-import { NostrEvent } from 'nostr-tools';
-
-type Profile = { name: string };
+import { NostrEvent, kinds } from 'nostr-tools';
+import App from '../../app/index.js';
 
 export type Node = { p: string; z: number; n: number };
 
+// TODO: this should be moved to core
+
 export default class Graph {
-	profile: Record<string, { created_at: number; profile: Profile }> = {};
 	contacts: Record<string, { created_at: number; set: Set<string> }> = {};
+	app: App;
+
+	constructor(app: App) {
+		this.app = app;
+	}
+
+	init() {
+		const events = this.app.eventStore.getEventsForFilters([{ kinds: [kinds.Contacts] }]);
+		for (let event of events) {
+			this.add(event);
+		}
+	}
 
 	add(event: NostrEvent) {
-		if (event.kind === 0) {
-			this.addProfile(event);
-		} else if (event.kind === 3) {
+		if (event.kind === kinds.Contacts) {
 			this.addContacts(event);
 		}
 	}
@@ -30,32 +40,6 @@ export default class Graph {
 		}
 	}
 
-	addProfile(event: NostrEvent) {
-		const existing = this.profile[event.pubkey];
-
-		// Add or overwrite an existing (older) profile
-		if (!existing || existing.created_at < event.created_at) {
-			let profile;
-
-			try {
-				profile = JSON.parse(event.content);
-			} catch (err) {
-				console.log('Failed to parse profile', err);
-			}
-
-			if (profile) {
-				this.profile[event.pubkey] = {
-					created_at: event.created_at,
-					profile: {
-						name: profile.name || profile.display,
-						// TODO maybe store other properties
-						// TODO maybe truncate values
-					},
-				};
-			}
-		}
-	}
-
 	getNodes(roots: string[] = []): Node[] {
 		const u: Record<string, { z: number; n: number }> = {};
 
@@ -70,8 +54,6 @@ export default class Graph {
 				if (!this.contacts[p]) {
 					continue;
 				}
-
-				//console.log('this.contacts[p].set', this.contacts[p].set);
 
 				// Iterate across pubkey's contacts, if the
 				// contact has not been recorded, create an
@@ -119,13 +101,5 @@ export default class Graph {
 			.sort((a, b) => {
 				return a.z === b.z ? b.n - a.n : a.z - b.z;
 			});
-	}
-
-	getProfile(pubkey: string) {
-		const record = this.profile[pubkey];
-
-		if (record) {
-			return record.profile;
-		}
 	}
 }
