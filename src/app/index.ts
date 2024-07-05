@@ -1,12 +1,11 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
-import { kinds } from 'nostr-tools';
+import { kinds, NostrEvent } from 'nostr-tools';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import webPush from 'web-push';
 
 import Database from './database.js';
-import Graph from '../modules/graph/index.js';
 
 import { SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
@@ -27,10 +26,10 @@ import NotificationsManager from '../modules/notifications-manager.js';
 import AppState from '../modules/app-state.js';
 import NotificationActions from '../modules/control/notification-actions.js';
 import ProfileBook from '../modules/profile-book.js';
+import ContactBook from '../modules/contact-book.js';
 import { getOutboxes } from '../helpers/mailboxes.js';
 import { AbstractRelay } from 'nostr-tools/abstract-relay';
 import CautiousPool from '../modules/cautious-pool.js';
-//import { PrivateNodeConfig } from '@satellite-earth/core/types/private-node-config.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 
 export default class App {
@@ -39,7 +38,6 @@ export default class App {
 	state: AppState;
 	database: Database;
 	eventStore: IEventStore;
-	graph: Graph;
 	relay: NostrRelay;
 	receiver: Receiver;
 	control: ControlApi;
@@ -47,6 +45,7 @@ export default class App {
 	pool: CautiousPool;
 	addressBook: AddressBook;
 	profileBook: ProfileBook;
+	contactBook: ContactBook;
 	directMessageManager: DirectMessageManager;
 	notifications: NotificationsManager;
 	blobMetadata: IBlobMetadataStore;
@@ -99,24 +98,7 @@ export default class App {
 		// Setup managers user contacts and profiles
 		this.addressBook = new AddressBook(this /*this.eventStore, this.pool*/);
 		this.profileBook = new ProfileBook(this /*this.eventStore, this.pool*/);
-
-		// NOTE don't need extra relays . . . bootstrap relays
-		// can be provided as env var on startup, falling back to
-		// hardcoded list
-
-		// set extra relays on address and profile book
-		// this.addressBook.extraRelays = [
-		// 	...COMMON_CONTACT_RELAYS,
-		// 	...Object.values(this.config.data.relays).map((r) => r.url),
-		// ];
-		// this.profileBook.extraRelays = [
-		// 	...COMMON_CONTACT_RELAYS,
-		// 	...Object.values(this.config.data.relays).map((r) => r.url),
-		// ];
-		// this.config.on('changed', (config) => {
-		// 	this.addressBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
-		// 	this.profileBook.extraRelays = [...COMMON_CONTACT_RELAYS, ...Object.values(config.relays).map((r) => r.url)];
-		// });
+		this.contactBook = new ContactBook(this);
 
 		// Handle possible additional actions when
 		// the event store receives a new message
@@ -127,7 +109,6 @@ export default class App {
 					const profile = this.profileBook.getProfile(event.pubkey);
 					if (!profile) {
 						this.profileBook.loadProfile(event.pubkey, this.addressBook.getOutboxes(event.pubkey));
-
 						this.addressBook.loadMailboxes(event.pubkey).then((mailboxes) => {
 							this.profileBook.loadProfile(event.pubkey, mailboxes ? getOutboxes(mailboxes) : undefined);
 						});
@@ -136,20 +117,12 @@ export default class App {
 			}
 		});
 
-		// Initialize model of the social graph
-		// TODO MAYBE `Graph` logic should be folded into AddressBook and ProfileBook
-		this.graph = new Graph();
-
 		// Setup the notifications manager
 		this.notifications = new NotificationsManager(this /*this.eventStore, this.state*/);
 		this.notifications.keys = {
 			publicKey: this.config.data.vapidPublicKey!,
 			privateKey: this.config.data.vapidPrivateKey!,
 		};
-
-		// NOTE notificatio
-		//this.notifications.owner = this.config.data.owner;
-		//this.config.on('changed', (config) => (this.notifications.owner = config.owner));
 
 		// Initializes receiver for pulling data from remote relays
 		this.receiver = new Receiver(this);
@@ -194,22 +167,17 @@ export default class App {
 		// Handle relay status reports
 		this.receiver.on('started', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER LISTENING'));
 		this.receiver.on('stopped', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER PAUSED'));
-
-		/*
 		this.receiver.on('event:received', (event) => {
 			// Pass received events to the relay
 			this.eventStore.addEvent(event);
+			this.statusLog.logEvent(event);
 
 			// NOTE: temporarily disable blob downloads
 			// Pass the event to the blob downloader
 			// if (event.pubkey === this.config.config.owner) {
 			// 	this.blobDownloader.queueBlobsFromEventContent(event);
 			// }
-
-			// log event in status log
-			this.logInsertedEvent(event);
 		});
-		*/
 
 		this.relay = new NostrRelay(this.eventStore);
 		this.relay.sendChallenge = true;
@@ -310,33 +278,11 @@ export default class App {
 	}
 	*/
 
-	/*
-	private logInsertedEvent(event: NostrEvent) {
-		const profile = this.graph.getProfile(event.pubkey);
-		const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
-
-		let preview;
-
-		// Preview kinds 1 and 7, truncating at 256 chars
-		if (event.kind === 1 || event.kind === 7) {
-			preview = event.content.length > 256 ? event.content.slice(0, 256) : event.content;
-		}
-
-		this.statusLog.log(`[EVENT] KIND ${event.kind} FROM ${name}` + (preview ? ` "${preview}"` : ''));
-	}
-	*/
-
 	start() {
 		this.running = true;
 		this.config.read();
 		this.state.read();
-
-		const events = this.eventStore.getEventsForFilters([{ kinds: [0, 3] }]);
-
-		for (let event of events) {
-			this.graph.add(event);
-		}
-
+		//this.socialGraph.initialize();
 		this.tick();
 	}
 
