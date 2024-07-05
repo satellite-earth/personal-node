@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
-import { Filter, NostrEvent, verifyEvent } from 'nostr-tools';
+import { NostrEvent, verifyEvent } from 'nostr-tools';
 import { WebSocket } from 'ws';
 import { Debugger } from 'debug';
 
@@ -13,11 +13,6 @@ function safeVerify(event: NostrEvent) {
 	return false;
 }
 
-type Subscription = {
-	id: string;
-	oneose?: () => void;
-};
-
 export type RelayOptions = {
 	skipVerification?: boolean;
 };
@@ -26,18 +21,24 @@ export class RelayScraper extends EventEmitter {
 	log: Debugger;
 	url: string;
 	ws?: WebSocket;
-
 	connected = false;
-	subs: Record<string, Subscription> = {};
 	seen: Set<string>;
-
+	authors: string[];
+	until: number = Infinity;
+	since: number = 0;
+	eose = false;
+	tail = false;
+	subid = randomUUID();
 	options: RelayOptions;
 
-	constructor(url: string, seen: Set<string>, options: RelayOptions = {}) {
+	TOLERANCE_SECONDS = 600;
+
+	constructor(url: string, authors: string[], seen: Set<string>, options: RelayOptions = {}) {
 		super();
 		this.log = logger.extend(url);
 		this.url = url;
 		this.seen = seen;
+		this.authors = authors;
 		this.options = options;
 	}
 
@@ -58,18 +59,15 @@ export class RelayScraper extends EventEmitter {
 			this.log(this.url + ' connected');
 			this.connected = true;
 			this.emit('connect', this);
+			this.subscribe();
 		});
 
 		this.ws.on('error', (err) => {
 			this.log(this.url + ' errored: ' + err.message);
-			//this.connected = false;
 		});
 
 		this.ws.on('close', () => {
-			this.log(this.url + ' closed');
-
 			this.connected = false;
-
 			if (this.connected) {
 				this.connected = false;
 				this.emit('disconnect', this);
@@ -84,30 +82,43 @@ export class RelayScraper extends EventEmitter {
 					data = JSON.parse(message.data);
 				}
 
-				if (data) {
-					const sub = this.subs[data[1]];
+				if (!data) return;
 
-					if (!sub) return;
+				if (data[0] === 'EVENT') {
+					const event = data[2];
+					this.eose = false;
 
-					if (data[0] === 'EVENT') {
-						const event = data[2];
-
-						if (this.seen.has(event.id)) return;
-
-						if (this.options.skipVerification || safeVerify(event)) {
-							this.emit('event', event);
-						}
-					} else if (data[0] === 'EOSE') {
-						if (sub.oneose) {
-							// sub.oneose(this);
-							sub.oneose();
-						}
-					} else if (data[0] === 'CLOSED') {
-						// Clear existing subs
-						this.subs = {};
-
-						this.emit('disconnect', this);
+					if (!this.tail && event.created_at < this.until) {
+						this.until = event.created_at - 1;
 					}
+
+					if (event.created_at > this.since) {
+						this.since = event.created_at;
+					}
+
+					if (this.seen.has(event.id)) return;
+
+					if (this.options.skipVerification || safeVerify(event)) {
+						this.seen.add(event.id);
+						this.emit('event', event);
+					}
+				} else if (data[0] === 'EOSE') {
+					this.emit('eose');
+
+					if (this.tail) return;
+
+					if (this.eose) {
+						//console.log(`reached end of archived events, ${this.url} subscribing to tail...`);
+						this.until = Infinity;
+						this.tail = true;
+						this.subscribe();
+					} else {
+						//console.log('should resubscribe to get more events');
+						this.eose = true;
+						this.subscribe();
+					}
+				} else if (data[0] === 'CLOSED') {
+					this.emit('disconnect', this);
 				}
 			} catch (err) {
 				this.log(err);
@@ -116,10 +127,11 @@ export class RelayScraper extends EventEmitter {
 	}
 
 	disconnect() {
+		// TODO Set up reconnect logic to maintain subscriptions with exponential backoff
+
 		if (this.ws) {
 			try {
 				this.ws.close();
-
 				this.emit('disconnect', this);
 			} catch (err) {
 				this.log(err);
@@ -127,36 +139,27 @@ export class RelayScraper extends EventEmitter {
 		}
 	}
 
-	subscribe(filters: Filter[] = [], options: Partial<Subscription> = {}) {
-		if (filters.length === 0) {
+	subscribe() {
+		//console.log(`subscribing to ${this.url}, tail = ${this.tail}, since = ${this.since}, until = ${this.until}`);
+		this.send([
+			'REQ',
+			this.subid,
+			{
+				authors: this.authors,
+				since: this.since > this.TOLERANCE_SECONDS ? this.since - this.TOLERANCE_SECONDS : undefined,
+				until: isFinite(this.until) ? this.until : undefined,
+			},
+		]);
+	}
+
+	unsubscribe() {
+		if (!this.connected || !this.subid) {
 			return;
 		}
-
-		const id = options.id || randomUUID();
-
-		this.subs[id] = {
-			id,
-			...options,
-		};
-
-		this.send(['REQ', id, ...filters]);
+		this.send(['CLOSE', this.subid]);
 	}
 
-	unsubscribe(subId: string) {
-		if (!this.connected) {
-			return;
-		}
-
-		this.send(['CLOSE', subId]);
-	}
-
-	unsubscribeAll() {
-		for (let subId of Object.keys(this.subs)) {
-			this.unsubscribe(subId);
-		}
-	}
-
-	send(data: any) {
+	private send(data: any) {
 		try {
 			if (this.ws) this.ws.send(JSON.stringify(data));
 		} catch (err) {
