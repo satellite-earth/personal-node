@@ -13,7 +13,7 @@ export default class ReceiverActions implements ControlMessageHandler {
 	constructor(app: App) {
 		this.app = app;
 
-		this.app.receiver.on('status:changed', (status) => {
+		this.app.receiver.on('status:changed', (status: any) => {
 			for (const sock of this.subscribed) {
 				this.send(sock, ['CONTROL', 'RECEIVER', 'STATUS', status]);
 			}

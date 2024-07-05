@@ -18,8 +18,9 @@ export default class StatusLog extends EventEmitter<EventMap> {
 	}
 
 	logEvent(event: NostrEvent) {
-		const profile = this.app.graph.getProfile(event.pubkey);
-		const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
+		//const profile = this.app.graph.getProfile(event.pubkey);
+		//const name = profile && profile.name ? profile.name : formatPubkey(event.pubkey);
+		const name = formatPubkey(event.pubkey);
 		let preview;
 
 		// Preview kinds 1 and 7, truncating at 256 chars

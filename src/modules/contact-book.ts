@@ -1,49 +1,47 @@
-//import { IEventStore } from '@satellite-earth/core';
 import { Filter, NostrEvent, kinds } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 
 import createDefer, { Deferred } from '../helpers/deferred.js';
-import { getInboxes, getOutboxes } from '../helpers/mailboxes.js';
+import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
 import App from '../app/index.js';
-import { COMMON_CONTACT_RELAYS } from '../env.js';
 
-export default class AddressBook {
-	log = logger.extend('AddressBook');
+export default class ContactBook {
+	log = logger.extend('ContactsBook');
 	app: App;
-	// pool: SimplePool;
-	// eventStore: IEventStore;
 	extraRelays = COMMON_CONTACT_RELAYS;
 
-	constructor(/*eventStore: IEventStore, pool?: SimplePool*/ app: App) {
-		// this.eventStore = eventStore;
-		// this.pool = pool || new SimplePool();
+	constructor(app: App) {
 		this.app = app;
 	}
 
 	private cache = new Map<string, NostrEvent>();
-	getMailboxes(pubkey: string) {
+	getContacts(pubkey: string) {
 		if (this.cache.has(pubkey)) return this.cache.get(pubkey)!;
 
-		const event = this.app.eventStore.getEventsForFilters([{ kinds: [kinds.RelayList], authors: [pubkey] }])?.[0];
+		const event = this.app.eventStore.getEventsForFilters([{ kinds: [kinds.Contacts], authors: [pubkey] }])?.[0];
 		if (event) {
 			this.cache.set(pubkey, event);
 			return event;
 		}
 	}
 
-	getOutboxes(pubkey: string) {
-		const mailboxes = this.getMailboxes(pubkey);
-		return mailboxes && getOutboxes(mailboxes);
-	}
-
-	getInboxes(pubkey: string) {
-		const mailboxes = this.getMailboxes(pubkey);
-		return mailboxes && getInboxes(mailboxes);
+	getFollowedPubkeys(pubkey: string): string[] {
+		const contacts = this.getContacts(pubkey);
+		if (contacts) {
+			return contacts.tags
+				.filter((tag) => {
+					return tag[0] === 'p';
+				})
+				.map((tag) => {
+					return tag[1];
+				});
+		}
+		return [];
 	}
 
 	handleEvent(event: NostrEvent) {
-		if (event.kind === kinds.RelayList) {
+		if (event.kind === kinds.Contacts) {
 			this.app.eventStore.addEvent(event);
 			const current = this.cache.get(event.pubkey);
 			if (!current || event.created_at > current.created_at) this.cache.set(event.pubkey, event);
@@ -68,7 +66,7 @@ export default class AddressBook {
 			const filters: Record<string, Filter> = {};
 
 			const addPubkeyToRelayFilter = (relay: string, pubkey: string) => {
-				filters[relay] = filters[relay] || { kinds: [kinds.RelayList], authors: [] };
+				filters[relay] = filters[relay] || { kinds: [kinds.Contacts], authors: [] };
 
 				if (!filters[relay].authors?.includes(pubkey)) {
 					filters[relay].authors?.push(pubkey);
@@ -99,7 +97,7 @@ export default class AddressBook {
 						for (const [pubkey] of this.fetching) {
 							const p = this.pending.get(pubkey);
 							if (p) {
-								const event = this.getMailboxes(pubkey) ?? null;
+								const event = this.getContacts(pubkey) ?? null;
 								p.resolve(event);
 								if (!event) failed++;
 								else found++;
@@ -117,8 +115,8 @@ export default class AddressBook {
 		}
 	}
 
-	async loadMailboxes(pubkey: string, relays: string[] = []) {
-		const event = this.getMailboxes(pubkey);
+	async loadContacts(pubkey: string, relays: string[] = []) {
+		const event = this.getContacts(pubkey);
 		if (event) return event;
 
 		const pending = this.pending.get(pubkey);
