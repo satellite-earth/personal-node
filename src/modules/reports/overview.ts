@@ -1,5 +1,5 @@
 import { NostrEvent } from 'nostr-tools';
-import { ReportArguments } from '@satellite-earth/core/types/report-api/index.js';
+import { ReportArguments } from '@satellite-earth/core/types/control-api/reports.js';
 
 import Report from './report.js';
 
