@@ -1,7 +1,7 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
-import { kinds, NostrEvent } from 'nostr-tools';
+import { kinds } from 'nostr-tools';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import webPush from 'web-push';
 
@@ -31,6 +31,8 @@ import { getOutboxes } from '../helpers/mailboxes.js';
 import { AbstractRelay } from 'nostr-tools/abstract-relay';
 import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
+import ReportActions from '../modules/control/report-actions.js';
+import OverviewReport from '../modules/reports/overview.js';
 
 export default class App {
 	running = false;
@@ -41,6 +43,7 @@ export default class App {
 	relay: NostrRelay;
 	receiver: Receiver;
 	control: ControlApi;
+	reports: ReportActions;
 	statusLog: StatusLog;
 	pool: CautiousPool;
 	addressBook: AddressBook;
@@ -157,6 +160,13 @@ export default class App {
 		this.control.registerHandler(new DirectMessageActions(this));
 		this.control.registerHandler(new NotificationActions(this));
 		this.control.registerHandler(new RemoteAuthActions(this));
+
+		// reports
+		this.reports = new ReportActions(this);
+		this.reports.types = {
+			OVERVIEW: OverviewReport,
+		};
+		this.control.registerHandler(this.reports);
 
 		if (process.send) this.control.attachToProcess(process);
 
@@ -296,6 +306,7 @@ export default class App {
 		this.running = false;
 		this.config.write();
 		this.state.write();
+		this.reports.cleanup();
 		this.relay.stop();
 		this.database.destroy();
 		this.receiver.destroy();
