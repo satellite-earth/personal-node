@@ -33,6 +33,7 @@ import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 import ReportActions from '../modules/control/report-actions.js';
 import OverviewReport from '../modules/reports/overview.js';
+import ConversationsReport from '../modules/reports/conversations.js';
 
 export default class App {
 	running = false;
@@ -165,6 +166,7 @@ export default class App {
 		this.reports = new ReportActions(this);
 		this.reports.types = {
 			OVERVIEW: OverviewReport,
+			CONVERSATIONS: ConversationsReport,
 		};
 		this.control.registerHandler(this.reports);
 

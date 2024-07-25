@@ -4,7 +4,7 @@ import { ReportArguments } from '@satellite-earth/core/types/control-api/reports
 import Report from './report.js';
 
 export default class OverviewReport extends Report<'OVERVIEW'> {
-	type = 'OVERVIEW';
+	readonly type = 'OVERVIEW';
 
 	async setup() {
 		const listener = (event: NostrEvent) => {

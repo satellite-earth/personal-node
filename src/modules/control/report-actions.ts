@@ -45,7 +45,7 @@ export default class ReportActions implements ControlMessageHandler {
 					const ReportClass = this.types[type];
 					if (!ReportClass) throw new Error('Missing class for report type: ' + type);
 
-					this.log(`Creating ${type} report with args`, args);
+					this.log(`Creating ${type} report with args`, JSON.stringify(args));
 
 					report = new ReportClass(id, this.app, sock);
 					reports.set(id, report);

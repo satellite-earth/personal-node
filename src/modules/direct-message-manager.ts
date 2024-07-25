@@ -1,52 +1,41 @@
-//import { IEventStore } from '@satellite-earth/core';
 import { NostrEvent, kinds } from 'nostr-tools';
 import { SubCloser } from 'nostr-tools/abstract-pool';
 import { Subscription } from 'nostr-tools/abstract-relay';
 import { EventEmitter } from 'events';
 
-//import AddressBook from './address-book.js';
 import { getInboxes } from '../helpers/mailboxes.js';
 import { logger } from '../logger.js';
-//import LocalDatabase from '../app/database.js';
-import App from '../app/index.js';
+import type App from '../app/index.js';
 
 type EventMap = {
 	open: [string, string];
 	close: [string, string];
+	message: [NostrEvent];
 };
 
 /** handles sending and receiving direct messages */
 export default class DirectMessageManager extends EventEmitter<EventMap> {
 	log = logger.extend('DirectMessageManager');
 	app: App;
-	// database: LocalDatabase;
-	// eventStore: IEventStore;
-	// addressBook: AddressBook;
-	// pool: SimplePool;
 
 	private explicitRelays: string[] = [];
 
-	constructor(
-		app: App /*database: LocalDatabase, eventStore: IEventStore, addressBook?: AddressBook, pool?: SimplePool*/,
-	) {
+	constructor(app: App) {
 		super();
 		this.app = app;
-		// this.database = database;
-		// this.eventStore = eventStore;
-		// this.pool = pool || new SimplePool();
-		// this.addressBook = addressBook || new AddressBook(eventStore, pool);
 
-		// Load profiles for particpants when
+		// Load profiles for participants when
 		// a conversation thread is opened
 		this.on('open', (a, b) => {
 			this.app.profileBook.loadProfile(a, this.app.addressBook.getOutboxes(a));
 			this.app.profileBook.loadProfile(b, this.app.addressBook.getOutboxes(b));
 		});
-	}
 
-	// updateExplicitRelays(relays: string[]) {
-	// 	this.explicitRelays = relays;
-	// }
+		// emit a "message" event when a new kind4 message is detected
+		this.app.eventStore.on('event:inserted', (event) => {
+			if (event.kind === kinds.EncryptedDirectMessage) this.emit('message', event);
+		});
+	}
 
 	/** sends a DM event to the receivers inbox relays */
 	async forwardMessage(event: NostrEvent) {
@@ -159,9 +148,5 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 			this.subscriptions.delete(key);
 			this.emit('close', a, b);
 		}
-	}
-
-	getKind4MessageCount(pubkey: string) {
-		return this.app.database.getKind4MessageCount(pubkey);
 	}
 }

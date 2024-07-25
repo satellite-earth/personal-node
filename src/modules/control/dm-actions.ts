@@ -27,15 +27,6 @@ export default class DirectMessageActions implements ControlMessageHandler {
 				this.app.directMessageManager.closeConversation(message[3], message[4]);
 				return true;
 
-			case 'GET-STATS':
-				const owner = this.app.config.data.owner;
-				if (owner) {
-					this.app.directMessageManager.getKind4MessageCount(owner).then((stats) => {
-						this.send(sock, ['CONTROL', 'DM', 'STATS', stats]);
-					});
-				}
-				return true;
-
 			default:
 				return false;
 		}

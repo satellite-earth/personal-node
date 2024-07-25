@@ -13,11 +13,13 @@ type f = () => void;
 
 export default class Report<T extends keyof ReportResults> {
 	id: string;
-	type: string;
+	// @ts-expect-error
+	readonly type: T = '';
 	socket: WebSocket | NodeJS.Process;
 	app: App;
 	running = false;
 	log = logger.extend('Report');
+	args?: ReportArguments[T];
 
 	private setupTeardown?: void | f;
 
@@ -26,7 +28,6 @@ export default class Report<T extends keyof ReportResults> {
 		this.socket = socket;
 		this.app = app;
 
-		this.type = 'Unknown';
 		this.log = logger.extend('Report:' + this.type);
 	}
 
@@ -52,6 +53,7 @@ export default class Report<T extends keyof ReportResults> {
 	// public api
 	async run(args: ReportArguments[T]) {
 		try {
+			this.args = args;
 			if (this.running === false) {
 				// hack to make sure the .log is extended correctly
 				this.log = logger.extend('Report:' + this.type);
@@ -60,7 +62,7 @@ export default class Report<T extends keyof ReportResults> {
 				this.setupTeardown = await this.setup(args);
 			}
 
-			this.log(`Executing with args`, args);
+			this.log(`Executing with args`, JSON.stringify(args));
 			await this.execute(args);
 			this.running = true;
 		} catch (error) {
