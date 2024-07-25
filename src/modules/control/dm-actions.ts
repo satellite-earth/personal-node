@@ -1,8 +1,5 @@
 import { WebSocket } from 'ws';
-import {
-	DirectMessageMessage,
-	DirectMessageResponse,
-} from '@satellite-earth/core/types/control-api/direct-messages.js';
+import { DirectMessageMessage } from '@satellite-earth/core/types/control-api/direct-messages.js';
 
 import type App from '../../app/index.js';
 import { type ControlMessageHandler } from './control-api.js';
@@ -30,9 +27,5 @@ export default class DirectMessageActions implements ControlMessageHandler {
 			default:
 				return false;
 		}
-	}
-
-	send(sock: WebSocket | NodeJS.Process, response: DirectMessageResponse) {
-		sock.send?.(JSON.stringify(response));
 	}
 }
