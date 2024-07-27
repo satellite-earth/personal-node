@@ -39,8 +39,8 @@ importers:
         specifier: ^4.18.2
         version: 4.19.2
       hyperdht:
-        specifier: ^6.14.0
-        version: 6.14.0
+        specifier: ^6.15.4
+        version: 6.15.4
       import-meta-resolve:
         specifier: ^4.1.0
         version: 4.1.0
@@ -185,8 +185,8 @@ packages:
   '@changesets/write@0.3.1':
     resolution: {integrity: sha512-SyGtMXzH3qFqlHKcvFY2eX+6b0NGiFcNav8AFsYwy5l8hejOeoeTDemu5Yjmke2V5jpzY+pBvM0vCCQ3gdZpfw==}
 
-  '@hyperswarm/secret-stream@6.4.0':
-    resolution: {integrity: sha512-EzVr0o1lQP+qfctc0lj6fSJe1hqEwq894eyzPOorYZ1KTqVCKSPX9LcNwTklrm5MzJJVqvZBicD3oPgMq/us6w==}
+  '@hyperswarm/secret-stream@6.6.1':
+    resolution: {integrity: sha512-RRmnS/VQa9VoK1/1ZQEizK8aievOCQkHVvCcbSpXoCtUuRZCs6kigvJlA0mfocMPOIXrFGnASh9Bzkpx8rTYMg==}
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -738,8 +738,8 @@ packages:
     resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
     engines: {node: '>=8'}
 
-  dht-rpc@6.11.2:
-    resolution: {integrity: sha512-R0LS2xwMhHZ9L9J7nWr3rqI3RhZjAh/0BDA/5b4dn3rqWEgCiBxe0WsyJaFXplkIg7+djxNma7LM0MkHuwbI1A==}
+  dht-rpc@6.12.1:
+    resolution: {integrity: sha512-doX05CNlbMohyqs2t9smpCSfF2lGSRdNDL2thJHFV+hW6igiNf8PN8ykAKhO2Cb75YH1Bm1CSigPhIn+IaEiIQ==}
 
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
@@ -1011,8 +1011,8 @@ packages:
   hypercore-id-encoding@1.3.0:
     resolution: {integrity: sha512-W6sHdGo5h7LXEsoWfKf/KfuROZmZRQDlGqJF2EPHW+noCK66Vvr0+zE6cL0vqQi18s0kQPeN7Sq3QyR0Ytc2VQ==}
 
-  hyperdht@6.14.0:
-    resolution: {integrity: sha512-jfRAMV5BgHbGDrO8gcvbpg1N6ZcA9jHswIlWCseLcaOUUmVc2Pcp2ys7PrvF5dv74ZLeb6hhss5Kek0y9FFE9A==}
+  hyperdht@6.15.4:
+    resolution: {integrity: sha512-ci58QYegt2Spw+mPHudsmwwL/sUxBb3UnNfPwRAt3zFT6hHKuWkGb7jNGW0lMqJwQ5vLuRg53b+II7yZnat9+w==}
     hasBin: true
 
   hypertrace@1.4.2:
@@ -1939,8 +1939,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  udx-native@1.9.0:
-    resolution: {integrity: sha512-9zHnKi0keiiNlXeHzRKelu9A310qRYipzSTsFasjJJ4BQBJ8pXpFA6/8WuRaLUNyeNNv0YB4JAkIme61HgW+EA==}
+  udx-native@1.10.3:
+    resolution: {integrity: sha512-cT0jaUF5d2SNoUv97GqJmcaWRbog4yfnDC0mz6dV2HdqZrO1qUCU4237R489OtNoQXculusn1KX96mYZf5lUNg==}
 
   unbox-primitive@1.0.2:
     resolution: {integrity: sha512-61pPlCD9h51VoreyJ0BReideM3MDKMKnh6+V9L08331ipq6Q8OFXZYiqP6n/tbHx4s5I9uRhcye6BrbkizkBDw==}
@@ -2266,7 +2266,7 @@ snapshots:
       human-id: 1.0.2
       prettier: 2.8.8
 
-  '@hyperswarm/secret-stream@6.4.0':
+  '@hyperswarm/secret-stream@6.6.1':
     dependencies:
       b4a: 1.6.6
       hypercore-crypto: 3.4.2
@@ -2894,7 +2894,7 @@ snapshots:
 
   detect-libc@2.0.3: {}
 
-  dht-rpc@6.11.2:
+  dht-rpc@6.12.1:
     dependencies:
       b4a: 1.6.6
       bare-events: 2.3.1
@@ -2906,7 +2906,7 @@ snapshots:
       sodium-universal: 4.0.1
       streamx: 2.18.0
       time-ordered-set: 1.0.2
-      udx-native: 1.9.0
+      udx-native: 1.10.3
     transitivePeerDependencies:
       - sodium-javascript
 
@@ -3270,9 +3270,9 @@ snapshots:
       b4a: 1.6.6
       z32: 1.1.0
 
-  hyperdht@6.14.0:
+  hyperdht@6.15.4:
     dependencies:
-      '@hyperswarm/secret-stream': 6.4.0
+      '@hyperswarm/secret-stream': 6.6.1
       b4a: 1.6.6
       bare-events: 2.3.1
       blind-relay: 1.3.3
@@ -3280,7 +3280,7 @@ snapshots:
       compact-encoding: 2.15.0
       compact-encoding-net: 1.2.0
       debugging-stream: 2.0.0
-      dht-rpc: 6.11.2
+      dht-rpc: 6.12.1
       hypercore-crypto: 3.4.2
       hypercore-id-encoding: 1.3.0
       hypertrace: 1.4.2
@@ -4264,7 +4264,7 @@ snapshots:
 
   typescript@5.4.5: {}
 
-  udx-native@1.9.0:
+  udx-native@1.10.3:
     dependencies:
       b4a: 1.6.6
       bare-events: 2.3.1

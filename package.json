@@ -48,7 +48,7 @@
 		"debug": "^4.3.4",
 		"dotenv": "^16.3.1",
 		"express": "^4.18.2",
-		"hyperdht": "^6.14.0",
+		"hyperdht": "^6.15.4",
 		"import-meta-resolve": "^4.1.0",
 		"lodash.throttle": "^4.1.1",
 		"lowdb": "^7.0.1",
