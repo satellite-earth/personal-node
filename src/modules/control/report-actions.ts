@@ -30,6 +30,18 @@ export default class ReportActions implements ControlMessageHandler {
 		return map;
 	}
 
+	handleDisconnect(ws: WebSocket): void {
+		// close all reports for socket on disconnect
+		const reports = this.reports.get(ws);
+
+		if (reports) {
+			for (const [id, report] of reports) report.close();
+
+			this.log(`Closed ${reports.size} reports for disconnected socket`);
+			this.reports.delete(ws);
+		}
+	}
+
 	// TODO: maybe move some of this logic out to a manager class so the control action class can be simpler
 	async handleMessage(sock: WebSocket | NodeJS.Process, message: ReportsMessage) {
 		const method = message[2];
@@ -45,7 +57,7 @@ export default class ReportActions implements ControlMessageHandler {
 					const ReportClass = this.types[type];
 					if (!ReportClass) throw new Error('Missing class for report type: ' + type);
 
-					this.log(`Creating ${type} report with args`, JSON.stringify(args));
+					this.log(`Creating ${type} ${id} report with args`, JSON.stringify(args));
 
 					report = new ReportClass(id, this.app, sock);
 					reports.set(id, report);
