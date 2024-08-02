@@ -1,14 +1,18 @@
 import path from 'path';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
+import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 import { kinds } from 'nostr-tools';
-import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import webPush from 'web-push';
 
 import Database from './database.js';
 
 import { SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
+
+import { isHex } from '../helpers/pubkey.js';
+import { getOutboxes } from '../helpers/mailboxes.js';
+
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
 import ControlApi from '../modules/control/control-api.js';
@@ -18,7 +22,6 @@ import Receiver from '../modules/receiver/index.js';
 import StatusLog from '../modules/status-log.js';
 import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
-import { isHex } from '../helpers/pubkey.js';
 import DirectMessageManager from '../modules/direct-message-manager.js';
 import DirectMessageActions from '../modules/control/dm-actions.js';
 import AddressBook from '../modules/address-book.js';
@@ -27,13 +30,15 @@ import AppState from '../modules/app-state.js';
 import NotificationActions from '../modules/control/notification-actions.js';
 import ProfileBook from '../modules/profile-book.js';
 import ContactBook from '../modules/contact-book.js';
-import { getOutboxes } from '../helpers/mailboxes.js';
 import { AbstractRelay } from 'nostr-tools/abstract-relay';
 import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 import ReportActions from '../modules/control/report-actions.js';
 import OverviewReport from '../modules/reports/overview.js';
 import ConversationsReport from '../modules/reports/conversations.js';
+import LogsReport from '../modules/reports/logs.js';
+import LogStore from '../modules/logs/log-store.js';
+import ServicesReport from '../modules/reports/services.js';
 
 export default class App {
 	running = false;
@@ -41,6 +46,7 @@ export default class App {
 	state: AppState;
 	database: Database;
 	eventStore: IEventStore;
+	logStore: LogStore;
 	relay: NostrRelay;
 	receiver: Receiver;
 	control: ControlApi;
@@ -82,10 +88,11 @@ export default class App {
 		}
 
 		// Init embedded sqlite database
-		this.database = new Database({
-			directory: dataPath,
-			reportInterval: 1000,
-		});
+		this.database = new Database({ directory: dataPath });
+
+		// create log managers
+		this.logStore = new LogStore(this.database.db);
+		this.logStore.setup();
 
 		// Recognize local relay by matching auth string
 		this.pool = new CautiousPool((relay: AbstractRelay, challenge: string) => {
@@ -95,7 +102,7 @@ export default class App {
 			return false;
 		});
 
-		// Intialize the event store
+		// Initialize the event store
 		this.eventStore = new SQLiteEventStore(this.database.db);
 		this.eventStore.setup();
 
@@ -132,25 +139,19 @@ export default class App {
 		this.receiver = new Receiver(this);
 		//this.updateReceiverFromConfig();
 
-		// update the receiver options when the config changes
-		// this.config.on('changed', (config, field) => {
-		// 	//this.updateReceiverFromConfig(config);
-		// 	this.statusLog.log(`[CONFIG] set ${field}`);
-		// });
-
 		// DM manager
-		this.directMessageManager = new DirectMessageManager(
-			this /*this.database, this.eventStore, this.addressBook, this.pool*/,
-		);
+		this.directMessageManager = new DirectMessageManager(this);
 
-		//MessageManager();
-		//this.config.on('changed', this.updateDirectMessageManager.bind(this));
+		// set watchInbox for owner when config is loaded or changed
+		this.config.on('updated', (config) => {
+			if (config.owner) this.directMessageManager.watchInbox(config.owner);
+		});
 
 		// update profiles when conversations are opened
-		// this.directMessageManager.on('open', (a, b) => {
-		// 	this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
-		// 	this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
-		// });
+		this.directMessageManager.on('open', (a, b) => {
+			this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
+			this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
+		});
 
 		// API for controlling the node
 		this.control = new ControlApi(this, AUTH);
@@ -167,6 +168,8 @@ export default class App {
 		this.reports.types = {
 			OVERVIEW: OverviewReport,
 			CONVERSATIONS: ConversationsReport,
+			LOGS: LogsReport,
+			SERVICES: ServicesReport,
 		};
 		this.control.registerHandler(this.reports);
 
@@ -261,16 +264,6 @@ export default class App {
 			return next();
 		});
 	}
-
-	/** config -> direct message manager */
-	/*
-	private updateDirectMessageManager(config: PrivateNodeConfig = this.config.data) {
-		const relays = config.relays.map((r) => r.url);
-		this.directMessageManager.updateExplicitRelays(relays.length > 0 ? relays : BOOTSTRAP_RELAYS);
-
-		if (config.owner) this.directMessageManager.watchInbox(config.owner);
-	}
-	*/
 
 	// TODO this method can be removed
 	// the receiver just needs to know the

@@ -58,7 +58,6 @@ export default class Report<T extends keyof ReportResults> {
 				// hack to make sure the .log is extended correctly
 				this.log = logger.extend('Report:' + this.type);
 
-				this.log('Running setup');
 				this.setupTeardown = await this.setup(args);
 			}
 
@@ -71,7 +70,6 @@ export default class Report<T extends keyof ReportResults> {
 		}
 	}
 	close() {
-		this.log('Closing');
 		this.setupTeardown?.();
 		this.cleanup();
 		this.running = false;

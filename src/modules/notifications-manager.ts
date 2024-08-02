@@ -1,11 +1,9 @@
-//import { IEventStore } from '@satellite-earth/core';
 import { NotificationType, WebSubscription } from '@satellite-earth/core/types/control-api/notifications.js';
 import { NostrEvent, kinds } from 'nostr-tools';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import dayjs from 'dayjs';
 import webPush from 'web-push';
 
-//import AppState from './app-state.js';
 import { logger } from '../logger.js';
 import App from '../app/index.js';
 
@@ -14,8 +12,6 @@ export default class NotificationsManager {
 	app: App;
 	lastRead: number = dayjs().unix();
 
-	// owner?: string;
-	// state: AppState;
 	keys: webPush.VapidKeys = webPush.generateVAPIDKeys();
 
 	get subscriptions() {
@@ -25,10 +21,7 @@ export default class NotificationsManager {
 		this.app.state.data.subscriptions = v;
 	}
 
-	//eventStore: IEventStore;
-	constructor(/*eventStore: IEventStore, state: AppState*/ app: App) {
-		// this.eventStore = eventStore;
-		// this.state = state;
+	constructor(app: App) {
 		this.app = app;
 		this.app.eventStore.on('event:inserted', this.handleEvent.bind(this));
 	}

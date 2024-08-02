@@ -1,5 +1,4 @@
-import { IEventStore } from '@satellite-earth/core';
-import { Filter, NostrEvent, SimplePool, kinds } from 'nostr-tools';
+import { Filter, NostrEvent, kinds } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 
 import createDefer, { Deferred } from '../helpers/deferred.js';
@@ -10,13 +9,9 @@ import App from '../app/index.js';
 export default class ProfileBook {
 	log = logger.extend('ProfileBook');
 	app: App;
-	// pool: SimplePool;
-	// eventStore: IEventStore;
 	extraRelays = COMMON_CONTACT_RELAYS;
 
 	constructor(app: App) {
-		// this.eventStore = eventStore;
-		// this.pool = pool || new SimplePool();
 		this.app = app;
 	}
 

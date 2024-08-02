@@ -8,18 +8,25 @@ import { USE_PREBUILT_SQLITE_BINDINGS } from '../env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+export type LocalDatabaseConfig = {
+	directory: string;
+	name: string;
+	wal: boolean;
+};
+
 export default class LocalDatabase extends EventEmitter {
-	config: any;
+	config: LocalDatabaseConfig;
 	path: { main: string; shm: string; wal: string };
 
 	db: SQLDatabase;
 
-	constructor(config: any = {}) {
+	constructor(config: Partial<LocalDatabaseConfig>) {
 		super();
 
 		this.config = {
 			directory: 'data',
 			name: 'events',
+			wal: true,
 			...config,
 		};
 
@@ -40,9 +47,7 @@ export default class LocalDatabase extends EventEmitter {
 				: undefined,
 		});
 
-		if (config.wal !== false) {
-			this.db.pragma('journal_mode = WAL');
-		}
+		if (this.config.wal) this.db.pragma('journal_mode = WAL');
 	}
 
 	hasTable(table: string) {
@@ -52,7 +57,8 @@ export default class LocalDatabase extends EventEmitter {
 		return result.count > 0;
 	}
 
-	// Delete all records in the database
+	// Delete all events in the database
+	/** @deprecated this should not be used */
 	clear() {
 		this.db.transaction(() => {
 			this.db.prepare(`DELETE FROM tags`).run();
@@ -62,6 +68,7 @@ export default class LocalDatabase extends EventEmitter {
 	}
 
 	// Get number of events in the database
+	/** @deprecated this should be moved to a report */
 	count() {
 		const result = this.db.prepare(`SELECT COUNT(*) AS events FROM events`).get() as { events: number };
 
@@ -73,11 +80,11 @@ export default class LocalDatabase extends EventEmitter {
 		let sum;
 
 		try {
-			const statMain = fs.statSync(this.path.main);
-			const statShm = fs.statSync(this.path.shm);
-			const statWal = fs.statSync(this.path.wal);
+			const statMain = fs.statSync(this.path.main).size;
+			const statShm = this.config.wal ? fs.statSync(this.path.shm).size : 0;
+			const statWal = this.config.wal ? fs.statSync(this.path.wal).size : 0;
 
-			sum = statMain.size + statShm.size + statWal.size;
+			sum = statMain + statShm + statWal;
 		} catch (err) {
 			console.log(err);
 		}

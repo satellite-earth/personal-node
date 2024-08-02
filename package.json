@@ -53,6 +53,7 @@
 		"lodash.throttle": "^4.1.1",
 		"lowdb": "^7.0.1",
 		"mkdirp": "^3.0.1",
+		"nanoid": "^5.0.5",
 		"nostr-tools": "^2.5.2",
 		"process-streams": "^1.0.1",
 		"simple-zstd": "^1.4.2",

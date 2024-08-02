@@ -5,6 +5,7 @@ import express, { Request } from 'express';
 import path from 'node:path';
 import { createServer } from 'node:http';
 import { mkdirp } from 'mkdirp';
+import { Debugger } from 'debug';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
@@ -12,7 +13,7 @@ import { resolve as importMetaResolve } from 'import-meta-resolve';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
-import { logger } from './logger.js';
+import { addListener, logger } from './logger.js';
 
 // @ts-expect-error
 global.WebSocket = WebSocket;
@@ -34,6 +35,12 @@ await mkdirp(DATA_PATH);
 const app = new App(DATA_PATH);
 const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
+// connect logger to app LogStore
+addListener(({ namespace }, ...args) => {
+	app.logStore.addEntry(namespace, Math.round(Date.now() / 1000), args.join(' '));
+});
+
+// attach app to websocket server
 app.control.attachToServer(wss);
 wss.on('connection', async (ws, req) => {
 	if (req.url === '/') return app.relay.handleConnection(ws, req);
@@ -108,7 +115,7 @@ app.start();
 // Listen for http connections
 server.listen(PORT, () => {
 	logger(`server running on`, PORT);
-	logger('AUTH', AUTH);
+	console.info('AUTH', AUTH);
 
 	if (process.send) process.send({ type: 'RELAY_READY' });
 });
