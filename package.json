@@ -25,6 +25,7 @@
 			"types": "./dist/app/index.d.ts"
 		}
 	},
+	"packageManager": "pnpm@9.6.0",
 	"scripts": {
 		"prepack": "pnpm build",
 		"start": "node .",
