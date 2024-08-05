@@ -250,8 +250,12 @@ export default class App {
 			} else return next();
 		});
 
-		// block subscriptions for sensitive kinds unless NIP-42 auth
+		// block subscriptions for sensitive kinds unless NIP-42 auth or Auth Code
 		this.relay.registerSubscriptionFilter((ctx, next) => {
+			// always allow if authenticated with auth code
+			const isAuthenticatedWithAuthCode = this.control.authenticatedConnections.has(ctx.socket);
+			if (isAuthenticatedWithAuthCode) return next();
+
 			const hasSensitiveKinds = ctx.filters.some(
 				(filter) => filter.kinds && SENSITIVE_KINDS.some((k) => filter.kinds?.includes(k)),
 			);

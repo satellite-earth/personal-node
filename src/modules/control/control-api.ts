@@ -9,8 +9,8 @@ export type ControlMessage = ['CONTROL', string, string, ...any[]];
 export interface ControlMessageHandler {
 	app: App;
 	name: string;
-	handleConnection?(ws: WebSocket|NodeJS.Process): void
-	handleDisconnect?(socket: WebSocket): void
+	handleConnection?(ws: WebSocket | NodeJS.Process): void;
+	handleDisconnect?(socket: WebSocket): void;
 	handleMessage(sock: WebSocket | NodeJS.Process, message: ControlMessage): boolean | Promise<boolean>;
 }
 
@@ -46,7 +46,7 @@ export default class ControlApi {
 		});
 
 		for (const [id, handler] of this.handlers) {
-			handler.handleConnection?.(ws)
+			handler.handleConnection?.(ws);
 		}
 
 		ws.once('close', () => this.handleDisconnect(ws));
@@ -55,7 +55,7 @@ export default class ControlApi {
 		this.authenticatedConnections.delete(ws);
 
 		for (const [id, handler] of this.handlers) {
-			handler.handleDisconnect?.(ws)
+			handler.handleDisconnect?.(ws);
 		}
 	}
 
@@ -72,7 +72,7 @@ export default class ControlApi {
 		});
 
 		for (const [id, handler] of this.handlers) {
-			handler.handleConnection?.(p)
+			handler.handleConnection?.(p);
 		}
 	}
 
