@@ -2,10 +2,29 @@ import { Database } from 'better-sqlite3';
 import { Filter, NostrEvent } from 'nostr-tools';
 import { IEventStore, SQLiteEventStore } from '@satellite-earth/core';
 import { logger } from '../logger.js';
+import { MigrationSet } from '@satellite-earth/core/sqlite';
 
 export function mapParams(params: any[]) {
 	return `(${params.map(() => `?`).join(', ')})`;
 }
+
+const migrations = new MigrationSet('labeled-event-store');
+
+// Version 1
+migrations.addScript(1, async (db, log) => {
+	db.prepare(
+		`
+		CREATE TABLE IF NOT EXISTS event_labels (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			event TEXT(64) REFERENCES events(id),
+			label TEXT
+		)
+	`,
+	).run();
+
+	db.prepare('CREATE INDEX IF NOT EXISTS event_labels_label ON event_labels(label)').run();
+	db.prepare('CREATE INDEX IF NOT EXISTS event_labels_event ON event_labels(event)').run();
+});
 
 /** An event store that is can only see a subset of events int the database */
 export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
@@ -21,21 +40,7 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 
 	async setup() {
 		await super.setup();
-
-		this.db
-			.prepare(
-				`
-				CREATE TABLE IF NOT EXISTS event_labels (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					event TEXT(64) REFERENCES events(id),
-					label TEXT
-				)
-			`,
-			)
-			.run();
-
-		this.db.prepare('CREATE INDEX IF NOT EXISTS event_labels_label ON event_labels(label)').run();
-		this.db.prepare('CREATE INDEX IF NOT EXISTS event_labels_event ON event_labels(event)').run();
+		await migrations.run(this.db);
 	}
 
 	override buildConditionsForFilters(filter: Filter) {

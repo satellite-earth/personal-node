@@ -6,6 +6,7 @@ import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
 import App from '../app/index.js';
 
+/** loads kind 0 metadata for pubkeys */
 export default class ProfileBook {
 	log = logger.extend('ProfileBook');
 	app: App;

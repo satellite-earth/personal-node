@@ -6,6 +6,7 @@ import { COMMON_CONTACT_RELAYS } from '../env.js';
 import { logger } from '../logger.js';
 import App from '../app/index.js';
 
+/** Loads 3 contact lists for pubkeys */
 export default class ContactBook {
 	log = logger.extend('ContactsBook');
 	app: App;

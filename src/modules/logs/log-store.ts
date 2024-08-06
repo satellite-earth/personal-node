@@ -4,6 +4,7 @@ import { Debugger } from 'debug';
 import { logger } from '../../logger.js';
 import EventEmitter from 'events';
 import { nanoid } from 'nanoid';
+import { MigrationSet } from '@satellite-earth/core/sqlite';
 
 type EventMap = {
 	log: [LogEntry];
@@ -19,6 +20,27 @@ export type DatabaseLogEntry = LogEntry & {
 	id: number | bigint;
 };
 
+const migrations = new MigrationSet('log-store');
+
+// version 1
+migrations.addScript(1, async (db, log) => {
+	db.prepare(
+		`
+		CREATE TABLE IF NOT EXISTS "logs" (
+			"id" TEXT NOT NULL UNIQUE,
+			"timestamp"	INTEGER NOT NULL,
+			"service"	TEXT NOT NULL,
+			"message"	TEXT NOT NULL,
+			PRIMARY KEY("id")
+		);
+	`,
+	).run();
+	log('Created logs table');
+
+	db.prepare('CREATE INDEX IF NOT EXISTS logs_service ON logs(service)');
+	log('Created logs service index');
+});
+
 export default class LogStore extends EventEmitter<EventMap> {
 	database: SQLDatabase;
 	debug: Debugger;
@@ -29,22 +51,8 @@ export default class LogStore extends EventEmitter<EventMap> {
 		this.debug = logger;
 	}
 
-	async setup() {
-		this.database
-			.prepare(
-				`
-				CREATE TABLE IF NOT EXISTS "logs" (
-					"id" TEXT NOT NULL UNIQUE,
-					"timestamp"	INTEGER NOT NULL,
-					"service"	TEXT NOT NULL,
-					"message"	TEXT NOT NULL,
-					PRIMARY KEY("id")
-				);
-			`,
-			)
-			.run();
-
-		this.database.prepare('CREATE INDEX IF NOT EXISTS logs_service ON logs(service)');
+	setup() {
+		return migrations.run(this.database);
 	}
 
 	addEntry(service: string, timestamp: Date | number, message: string) {
@@ -100,26 +108,6 @@ export default class LogStore extends EventEmitter<EventMap> {
 		if (this.queue.length > 0) setTimeout(this.write.bind(this), 1000);
 		else this.running = false;
 	}
-
-	// wrap(logger: Debugger): Debugger {
-	// 	const addEntry = this.addEntry.bind(this);
-	// 	const initialLog = logger.log.bind(logger);
-	// 	function log(this: Debugger, ...args: any[]) {
-	// 		addEntry(this.namespace, Math.round(Date.now() / 1000), args.join(' '));
-	// 		initialLog(...args);
-	// 	}
-
-	// 	const wrap = this.wrap.bind(this);
-	// 	const initialExtend = logger.extend.bind(logger);
-	// 	function extend(this: Debugger, namespace: string, delimiter?: string) {
-	// 		const newDebug = initialExtend(namespace, delimiter);
-	// 		return wrap(newDebug);
-	// 	}
-
-	// 	logger.log = log;
-	// 	logger.extend = extend;
-	// 	return logger;
-	// }
 
 	getLogs(filter?: { service?: string; since?: number; until?: number; limit?: number }) {
 		const conditions: string[] = [];

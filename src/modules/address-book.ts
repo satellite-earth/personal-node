@@ -1,4 +1,3 @@
-//import { IEventStore } from '@satellite-earth/core';
 import { Filter, NostrEvent, kinds } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 
@@ -8,16 +7,13 @@ import { logger } from '../logger.js';
 import App from '../app/index.js';
 import { COMMON_CONTACT_RELAYS } from '../env.js';
 
+/** Loads 10002 events for pubkeys */
 export default class AddressBook {
 	log = logger.extend('AddressBook');
 	app: App;
-	// pool: SimplePool;
-	// eventStore: IEventStore;
 	extraRelays = COMMON_CONTACT_RELAYS;
 
-	constructor(/*eventStore: IEventStore, pool?: SimplePool*/ app: App) {
-		// this.eventStore = eventStore;
-		// this.pool = pool || new SimplePool();
+	constructor(app: App) {
 		this.app = app;
 	}
 
