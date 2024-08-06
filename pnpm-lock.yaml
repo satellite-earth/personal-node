@@ -30,8 +30,8 @@ importers:
         specifier: ^1.11.10
         version: 1.11.11
       debug:
-        specifier: ^4.3.4
-        version: 4.3.5(supports-color@5.5.0)
+        specifier: ^4.3.6
+        version: 4.3.6(supports-color@5.5.0)
       dotenv:
         specifier: ^16.3.1
         version: 16.4.5
@@ -680,15 +680,6 @@ packages:
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.3.5:
-    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
-    engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
     peerDependenciesMeta:
@@ -2368,7 +2359,7 @@ snapshots:
       '@swc-node/sourcemap-support': 0.4.0
       '@swc/core': 1.5.24
       colorette: 2.0.20
-      debug: 4.3.5(supports-color@5.5.0)
+      debug: 4.3.6(supports-color@5.5.0)
       pirates: 4.0.6
       tslib: 2.6.2
       typescript: 5.4.5
@@ -2521,7 +2512,7 @@ snapshots:
 
   agent-base@7.1.1:
     dependencies:
-      debug: 4.3.5(supports-color@5.5.0)
+      debug: 4.3.6(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -2654,7 +2645,7 @@ snapshots:
   blossom-server-sdk@0.4.0:
     dependencies:
       better-sqlite3: 11.1.2
-      debug: 4.3.6
+      debug: 4.3.6(supports-color@5.5.0)
       mime: 4.0.4
       minio: 7.1.3
     transitivePeerDependencies:
@@ -2865,15 +2856,11 @@ snapshots:
     dependencies:
       ms: 2.0.0
 
-  debug@4.3.5(supports-color@5.5.0):
+  debug@4.3.6(supports-color@5.5.0):
     dependencies:
       ms: 2.1.2
     optionalDependencies:
       supports-color: 5.5.0
-
-  debug@4.3.6:
-    dependencies:
-      ms: 2.1.2
 
   debugging-stream@2.0.0:
     dependencies:
@@ -3275,7 +3262,7 @@ snapshots:
   https-proxy-agent@7.0.4:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.5(supports-color@5.5.0)
+      debug: 4.3.6(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -3628,7 +3615,7 @@ snapshots:
   nodemon@3.1.2:
     dependencies:
       chokidar: 3.6.0
-      debug: 4.3.5(supports-color@5.5.0)
+      debug: 4.3.6(supports-color@5.5.0)
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
       pstree.remy: 1.1.8

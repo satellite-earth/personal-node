@@ -4,6 +4,7 @@ import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 import { kinds } from 'nostr-tools';
 import webPush from 'web-push';
+import { AbstractRelay } from 'nostr-tools/abstract-relay';
 
 import Database from './database.js';
 
@@ -30,7 +31,6 @@ import AppState from '../modules/app-state.js';
 import NotificationActions from '../modules/control/notification-actions.js';
 import ProfileBook from '../modules/profile-book.js';
 import ContactBook from '../modules/contact-book.js';
-import { AbstractRelay } from 'nostr-tools/abstract-relay';
 import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 import ReportActions from '../modules/control/report-actions.js';
@@ -39,6 +39,8 @@ import ConversationsReport from '../modules/reports/conversations.js';
 import LogsReport from '../modules/reports/logs.js';
 import LogStore from '../modules/logs/log-store.js';
 import ServicesReport from '../modules/reports/services.js';
+import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
+import DecryptionCacheActions from '../modules/control/decryption-cache.js';
 
 export default class App {
 	running = false;
@@ -61,6 +63,7 @@ export default class App {
 	blobMetadata: IBlobMetadataStore;
 	blobStorage: LocalStorage;
 	blobDownloader: BlobDownloader;
+	decryptionCache: DecryptionCache;
 
 	constructor(dataPath: string) {
 		const configPath = path.join(dataPath, 'node.json');
@@ -106,9 +109,13 @@ export default class App {
 		this.eventStore = new SQLiteEventStore(this.database.db);
 		this.eventStore.setup();
 
+		// setup decryption cache
+		this.decryptionCache = new DecryptionCache(this.database.db);
+		this.decryptionCache.setup();
+
 		// Setup managers user contacts and profiles
-		this.addressBook = new AddressBook(this /*this.eventStore, this.pool*/);
-		this.profileBook = new ProfileBook(this /*this.eventStore, this.pool*/);
+		this.addressBook = new AddressBook(this);
+		this.profileBook = new ProfileBook(this);
 		this.contactBook = new ContactBook(this);
 
 		// Handle possible additional actions when
@@ -162,6 +169,7 @@ export default class App {
 		this.control.registerHandler(new DirectMessageActions(this));
 		this.control.registerHandler(new NotificationActions(this));
 		this.control.registerHandler(new RemoteAuthActions(this));
+		this.control.registerHandler(new DecryptionCacheActions(this));
 
 		// reports
 		this.reports = new ReportActions(this);
@@ -215,7 +223,7 @@ export default class App {
 			return true;
 		};
 
-		// when the owner to NIP-42 authenticates with the relay pass it along to the control
+		// when the owner NIP-42 authenticates with the relay pass it along to the control
 		this.relay.on('socket:auth', (ws, auth) => {
 			if (auth.pubkey === this.config.data.owner) {
 				this.control.authenticatedConnections.add(ws);

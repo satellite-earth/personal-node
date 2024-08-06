@@ -12,14 +12,14 @@ export function removeListener(listener: Listener) {
 	listeners.delete(listener);
 }
 
-const logger = debug('satellite');
-
 // listen for logs
-logger.log = function (this: Debugger, ...args: any[]) {
+debug.log = function (this: Debugger, ...args: any[]) {
 	for (const listener of listeners) {
 		listener(this, ...args);
 	}
 	console.log.apply(this, args);
 };
+
+const logger = debug('satellite');
 
 export { logger };
