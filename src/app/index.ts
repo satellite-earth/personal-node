@@ -41,6 +41,7 @@ import LogStore from '../modules/logs/log-store.js';
 import ServicesReport from '../modules/reports/services.js';
 import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
 import DecryptionCacheActions from '../modules/control/decryption-cache.js';
+import { logger } from '../logger.js';
 
 export default class App {
 	running = false;
@@ -215,6 +216,7 @@ export default class App {
 			// otherwise be set using the env var `OWNER_PUBKEY`)
 			if (!this.config.data.owner) {
 				this.config.update((config) => {
+					logger(`Owner is unset, setting owner to first NIP-42 auth: ${auth.pubkey}`);
 					config.owner = auth.pubkey;
 				});
 				return true;
@@ -275,6 +277,10 @@ export default class App {
 
 			return next();
 		});
+
+		// Read the config again, this fires the "loaded" and "updated" events to synchronize all the other services
+		// NOTE: its important this is called last. otherwise any this.config.on("update") listeners above will note fire
+		this.config.read();
 	}
 
 	// TODO this method can be removed
