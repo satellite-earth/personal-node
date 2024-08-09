@@ -76,8 +76,8 @@ function getPublicRelayAddressFromRequest(req: Request) {
 	return url;
 }
 
+// if the app isn't setup redirect to the setup view
 expressServer.get('/', (req, res, next) => {
-	// if the app isn't setup redirect to the setup view
 	if (!app.config.data.owner) {
 		logger('Redirecting to setup view');
 
@@ -90,7 +90,6 @@ expressServer.get('/', (req, res, next) => {
 });
 
 if (REDIRECT_APP_URL) {
-	// TODO: add publicly assessable address so app can connect
 	expressServer.get('*', (req, res) => {
 		// redirect to other web ui
 		const url = new URL('/connect', REDIRECT_APP_URL);

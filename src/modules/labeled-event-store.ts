@@ -56,14 +56,8 @@ export class LabeledEventStore extends SQLiteEventStore implements IEventStore {
 		return parts;
 	}
 
-	addEvent(
-		event: NostrEvent,
-		options?: {
-			preserveEphemeral?: boolean;
-			preserveReplaceable?: boolean;
-		},
-	) {
-		const inserted = super.addEvent(event, options);
+	addEvent(event: NostrEvent) {
+		const inserted = super.addEvent(event);
 
 		const hasLabel = !!this.db
 			.prepare('SELECT * FROM event_labels WHERE event = ? AND label = ?')
