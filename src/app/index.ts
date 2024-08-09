@@ -42,6 +42,7 @@ import ServicesReport from '../modules/reports/services.js';
 import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
 import DecryptionCacheActions from '../modules/control/decryption-cache.js';
 import { logger } from '../logger.js';
+import DMSearchReport from '../modules/reports/dm-search.js';
 
 export default class App {
 	running = false;
@@ -179,6 +180,7 @@ export default class App {
 			CONVERSATIONS: ConversationsReport,
 			LOGS: LogsReport,
 			SERVICES: ServicesReport,
+			DM_SEARCH: DMSearchReport,
 		};
 		this.control.registerHandler(this.reports);
 
