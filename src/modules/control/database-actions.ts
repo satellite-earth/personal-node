@@ -58,7 +58,6 @@ export default class DatabaseActions implements ControlMessageHandler {
 
 			case 'CLEAR':
 				this.app.database.clear();
-				this.app.statusLog.log('[control] DATABASE CLEARED');
 				return true;
 
 			default:
@@ -67,8 +66,6 @@ export default class DatabaseActions implements ControlMessageHandler {
 	}
 
 	async exportDatabase() {
-		let log;
-
 		try {
 			const t0 = Date.now();
 			const events = this.app.eventStore.getEventsForFilters([{}]);
@@ -78,14 +75,9 @@ export default class DatabaseActions implements ControlMessageHandler {
 				outputName: 'satellite-export',
 				compress: true,
 			});
-
-			log = `[control] DATABASE EXPORT SUCCEEDED IN ${Date.now() - t0} MS`;
 		} catch (err) {
 			console.log(err);
-			log = '[control] DATABASE EXPORT FAILED';
 		}
-
-		this.app.statusLog.log(log);
 	}
 
 	send(sock: WebSocket | NodeJS.Process, response: DatabaseResponse) {

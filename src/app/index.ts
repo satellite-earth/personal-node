@@ -20,8 +20,6 @@ import ControlApi from '../modules/control/control-api.js';
 import ConfigActions from '../modules/control/config-actions.js';
 import ReceiverActions from '../modules/control/receiver-actions.js';
 import Receiver from '../modules/receiver/index.js';
-import StatusLog from '../modules/status-log.js';
-import LogActions from '../modules/control/log-actions.js';
 import DatabaseActions from '../modules/control/database-actions.js';
 import DirectMessageManager from '../modules/direct-message-manager.js';
 import DirectMessageActions from '../modules/control/dm-actions.js';
@@ -55,7 +53,6 @@ export default class App {
 	receiver: Receiver;
 	control: ControlApi;
 	reports: ReportActions;
-	statusLog: StatusLog;
 	pool: CautiousPool;
 	addressBook: AddressBook;
 	profileBook: ProfileBook;
@@ -76,8 +73,6 @@ export default class App {
 
 		this.config = new ConfigManager(configPath);
 		this.config.read();
-
-		this.statusLog = new StatusLog(this);
 
 		// setup VAPID keys if they don't exist
 		if (!this.config.data.vapidPrivateKey || !this.config.data.vapidPublicKey) {
@@ -166,7 +161,6 @@ export default class App {
 		this.control = new ControlApi(this, AUTH);
 		this.control.registerHandler(new ConfigActions(this));
 		this.control.registerHandler(new ReceiverActions(this));
-		this.control.registerHandler(new LogActions(this));
 		this.control.registerHandler(new DatabaseActions(this));
 		this.control.registerHandler(new DirectMessageActions(this));
 		this.control.registerHandler(new NotificationActions(this));
@@ -189,21 +183,6 @@ export default class App {
 		this.blobMetadata = new BlossomSQLite(this.database.db);
 		this.blobStorage = new LocalStorage(path.join(DATA_PATH, 'blobs'));
 		this.blobDownloader = new BlobDownloader(this.blobStorage, this.blobMetadata);
-
-		// Handle relay status reports
-		this.receiver.on('started', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER LISTENING'));
-		this.receiver.on('stopped', () => this.statusLog.log('[CONTROL] SATELLITE RECEIVER PAUSED'));
-		this.receiver.on('event:received', (event) => {
-			// Pass received events to the relay
-			this.eventStore.addEvent(event);
-			this.statusLog.logEvent(event);
-
-			// NOTE: temporarily disable blob downloads
-			// Pass the event to the blob downloader
-			// if (event.pubkey === this.config.config.owner) {
-			// 	this.blobDownloader.queueBlobsFromEventContent(event);
-			// }
-		});
 
 		this.relay = new NostrRelay(this.eventStore);
 		this.relay.sendChallenge = true;
