@@ -1,11 +1,12 @@
 #!/bin/env node
 import process from 'node:process';
-import WebSocket, { WebSocketServer } from 'ws';
-import express, { Request } from 'express';
 import path from 'node:path';
 import { createServer } from 'node:http';
+
+import WebSocket, { WebSocketServer } from 'ws';
+import express, { Request } from 'express';
+import cors from 'cors';
 import { mkdirp } from 'mkdirp';
-import { Debugger } from 'debug';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
@@ -61,6 +62,8 @@ const blobServer = new DesktopBlobServer(app.blobStorage, app.blobMetadata);
 // Create http server
 const expressServer = express();
 
+// setup cors
+expressServer.use(cors());
 expressServer.use(blobServer.router);
 
 function getPublicRelayAddressFromRequest(req: Request) {
@@ -75,6 +78,24 @@ function getPublicRelayAddressFromRequest(req: Request) {
 
 	return url;
 }
+
+// health endpoint
+expressServer.get('/health', (req, res) => {
+	res.status(200).send('Healthy');
+});
+
+// NIP-11
+expressServer.get('/', (req, res, next) => {
+	if (req.headers.accept === 'application/nostr+json') {
+		res.send({
+			description: 'A Satellite Node relay',
+			name: 'Satellite Node',
+			software: 'git+https://github.com/satellite-earth/personal-node.git',
+			supported_nips: [1, 4, 11, 45],
+			pubkey: app.config.data.owner,
+		});
+	} else return next();
+});
 
 // if the app isn't setup redirect to the setup view
 expressServer.get('/', (req, res, next) => {
