@@ -8,6 +8,7 @@ import { MigrationSet } from '@satellite-earth/core/sqlite';
 
 type EventMap = {
 	log: [LogEntry];
+	clear: [string | undefined];
 };
 
 export type LogEntry = {
@@ -116,7 +117,7 @@ export default class LogStore extends EventEmitter<EventMap> {
 		let sql = `SELECT * FROM logs`;
 
 		if (filter?.service) {
-			conditions.push('service=?');
+			conditions.push(`service LIKE CONCAT(?,'%')`);
 			parameters.push(filter?.service);
 		}
 		if (filter?.since) {
@@ -134,5 +135,29 @@ export default class LogStore extends EventEmitter<EventMap> {
 			parameters.push(filter.limit);
 		}
 		return this.database.prepare<any[], DatabaseLogEntry>(sql).all(...parameters);
+	}
+
+	clearLogs(filter?: { service?: string; since?: number; until?: number }) {
+		const conditions: string[] = [];
+		const parameters: (string | number)[] = [];
+
+		let sql = `DELETE FROM logs`;
+
+		if (filter?.service) {
+			conditions.push('service=?');
+			parameters.push(filter?.service);
+		}
+		if (filter?.since) {
+			conditions.push('timestamp>=?');
+			parameters.push(filter?.since);
+		}
+		if (filter?.until) {
+			conditions.push('timestamp<=?');
+			parameters.push(filter?.until);
+		}
+		if (conditions.length > 0) sql += ` WHERE ${conditions.join(' AND ')}`;
+
+		this.database.prepare<any[], DatabaseLogEntry>(sql).run(...parameters);
+		this.emit('clear', filter?.service);
 	}
 }

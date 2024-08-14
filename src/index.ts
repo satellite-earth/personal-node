@@ -7,6 +7,9 @@ import WebSocket, { WebSocketServer } from 'ws';
 import express, { Request } from 'express';
 import cors from 'cors';
 import { mkdirp } from 'mkdirp';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration.js';
+import localizedFormat from 'dayjs/plugin/localizedFormat.js';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
@@ -15,6 +18,10 @@ import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
 import { addListener, logger } from './logger.js';
+
+// add durations plugin
+dayjs.extend(duration);
+dayjs.extend(localizedFormat);
 
 // @ts-expect-error
 global.WebSocket = WebSocket;
@@ -38,7 +45,7 @@ const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.event
 
 // connect logger to app LogStore
 addListener(({ namespace }, ...args) => {
-	app.logStore.addEntry(namespace, Math.round(Date.now() / 1000), args.join(' '));
+	app.logStore.addEntry(namespace, Date.now(), args.join(' '));
 });
 
 // attach app to websocket server

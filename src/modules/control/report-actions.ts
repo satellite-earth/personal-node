@@ -1,9 +1,9 @@
 import { WebSocket } from 'ws';
+import { ReportArguments, ReportsMessage } from '@satellite-earth/core/types/control-api/reports.js';
 
 import type App from '../../app/index.js';
 import { type ControlMessageHandler } from './control-api.js';
 import Report from '../reports/report.js';
-import { ReportArguments, ReportsMessage } from '@satellite-earth/core/types/control-api/reports.js';
 import { logger } from '../../logger.js';
 
 /** handles ['CONTROL', 'REPORT', ...] messages */

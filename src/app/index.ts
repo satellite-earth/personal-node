@@ -41,6 +41,8 @@ import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
 import DecryptionCacheActions from '../modules/control/decryption-cache.js';
 import { logger } from '../logger.js';
 import DMSearchReport from '../modules/reports/dm-search.js';
+import Scrapper from '../modules/scrapper/index.js';
+import LogsActions from '../modules/control/logs-actions.js';
 
 export default class App {
 	running = false;
@@ -51,6 +53,7 @@ export default class App {
 	logStore: LogStore;
 	relay: NostrRelay;
 	receiver: Receiver;
+	scrapper: Scrapper;
 	control: ControlApi;
 	reports: ReportActions;
 	pool: CautiousPool;
@@ -139,11 +142,14 @@ export default class App {
 			privateKey: this.config.data.vapidPrivateKey!,
 		};
 
-		// Initializes receiver for pulling data from remote relays
+		// Initializes receiver and scrapper for pulling data from remote relays
 		this.receiver = new Receiver(this);
-		//this.updateReceiverFromConfig();
+		this.scrapper = new Scrapper(this);
 
-		// DM manager
+		// pass events from the scrapper to the event store
+		this.scrapper.on('event', (event) => this.eventStore.addEvent(event));
+
+		// Initializes direct message manager for subscribing to DMs
 		this.directMessageManager = new DirectMessageManager(this);
 
 		// set watchInbox for owner when config is loaded or changed
@@ -166,6 +172,7 @@ export default class App {
 		this.control.registerHandler(new NotificationActions(this));
 		this.control.registerHandler(new RemoteAuthActions(this));
 		this.control.registerHandler(new DecryptionCacheActions(this));
+		this.control.registerHandler(new LogsActions(this));
 
 		// reports
 		this.reports = new ReportActions(this);
@@ -291,9 +298,12 @@ export default class App {
 	}
 
 	tick() {
-		this.blobDownloader.downloadNext();
+		if (!this.running) return;
 
-		if (this.running) setTimeout(this.tick.bind(this), 1000);
+		this.scrapper.loadNext();
+		// this.blobDownloader.downloadNext();
+
+		setTimeout(this.tick.bind(this), 1000);
 	}
 
 	stop() {

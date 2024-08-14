@@ -78,11 +78,6 @@ export default class Receiver extends EventEmitter<EventMap> {
 			const scraper = new RelayScraper(url, pubkeys, this.seen);
 			this.scrapers.set(url, scraper);
 			scraper.on('event', (event) => {
-				// NOTE: temporarily disable blob downloads
-				// Pass the event to the blob downloader
-				// if (event.pubkey === this.config.config.owner) {
-				// 	this.blobDownloader.queueBlobsFromEventContent(event);
-				// }
 				this.emit('event:received', event);
 			});
 
