@@ -12,8 +12,8 @@ export default class OverviewReport extends Report<'OVERVIEW'> {
 			const result = this.app.database.db
 				.prepare<
 					[string],
-					{ pubkey: string; events: number }
-				>(`SELECT pubkey, COUNT(events.id) as \`events\` FROM events WHERE pubkey=?`)
+					{ pubkey: string; events: number; active: number }
+				>(`SELECT pubkey, COUNT(events.id) as \`events\`, MAX(created_at) as \`active\` FROM events WHERE pubkey=?`)
 				.get(event.pubkey);
 
 			if (result) this.send(result);
@@ -29,8 +29,8 @@ export default class OverviewReport extends Report<'OVERVIEW'> {
 		const results = await this.app.database.db
 			.prepare<
 				[],
-				{ pubkey: string; events: number }
-			>(`SELECT pubkey, COUNT(events.id) as \`events\` FROM events GROUP BY pubkey ORDER BY \`events\` DESC`)
+				{ pubkey: string; events: number; active: number }
+			>(`SELECT pubkey, COUNT(events.id) as \`events\`, MAX(created_at) as \`active\` FROM events GROUP BY pubkey ORDER BY \`events\` DESC`)
 			.all();
 
 		for (const result of results) {
