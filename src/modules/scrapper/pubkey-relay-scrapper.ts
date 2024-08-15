@@ -10,6 +10,7 @@ const DEFAULT_LIMIT = 1000;
 
 export type PubkeyRelayScrapperState = {
 	cursor?: number;
+	complete?: boolean;
 };
 
 type EventMap = {
@@ -23,7 +24,6 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 	log: Debugger;
 
 	running = false;
-	complete = false;
 	error?: Error;
 	state: PubkeyRelayScrapperState = {};
 
@@ -32,6 +32,12 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 	}
 	set cursor(v: number) {
 		this.state.cursor = v;
+	}
+	get complete() {
+		return this.state.complete || false;
+	}
+	set complete(v: boolean) {
+		this.state.complete = v;
 	}
 
 	private subscription?: Subscription;
@@ -56,39 +62,46 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 		await this.relay.connect();
 
 		const cursor = this.state.cursor || dayjs().unix();
-		this.log(`Requesting events from ${cursor} ${dayjs.unix(cursor).format('lll')}`);
+		this.log(`Requesting from ${dayjs.unix(cursor).format('lll')} (${cursor})`);
 
-		let count = 0;
-		let newCursor = cursor;
-		this.subscription = this.relay.subscribe([{ authors: [this.pubkey], until: cursor, limit: DEFAULT_LIMIT }], {
-			onevent: (event) => {
-				this.emit('event', event);
-				count++;
+		// return a promise to wait for the subscription to end
+		return new Promise<void>((res, rej) => {
+			let count = 0;
+			let newCursor = cursor;
+			this.subscription = this.relay.subscribe([{ authors: [this.pubkey], until: cursor, limit: DEFAULT_LIMIT }], {
+				onevent: (event) => {
+					this.emit('event', event);
+					count++;
 
-				newCursor = Math.min(newCursor, event.created_at);
-			},
-			oneose: () => {
-				this.running = false;
-				this.subscription?.close();
+					newCursor = Math.min(newCursor, event.created_at);
+				},
+				oneose: () => {
+					this.running = false;
+					this.subscription?.close();
 
-				// if no events where returned, mark complete
-				if (count === 0) {
-					this.complete = true;
-					this.log('Failed to find any events, marking complete');
-				} else {
-					this.log(`Got ${count} events and moved cursor to ${newCursor} ${dayjs.unix(newCursor).format('lll')}`);
-				}
+					// if no events where returned, mark complete
+					if (count === 0) {
+						this.complete = true;
+						this.log('Got 0 events, complete');
+					} else {
+						this.log(`Got ${count} events and moved cursor to ${dayjs.unix(newCursor).format('lll')} (${newCursor})`);
+					}
 
-				this.state.cursor = newCursor;
-				this.emit('chunk', { count, cursor: this.cursor });
-			},
-			onclose: (reason) => {
-				if (this.subscription?.closed === false) {
-					// unexpected close
-					this.log(`Unexpected close: ${reason}`);
-					this.error = new Error(reason);
-				}
-			},
+					this.state.cursor = newCursor;
+					this.emit('chunk', { count, cursor: this.cursor });
+
+					res();
+				},
+				onclose: (reason) => {
+					if (this.subscription?.closed === false) {
+						// unexpected close
+						this.log(`Unexpected close: ${reason}`);
+						this.error = new Error(reason);
+
+						rej(this.error);
+					}
+				},
+			});
 		});
 	}
 }

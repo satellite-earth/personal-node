@@ -43,6 +43,7 @@ import DMSearchReport from '../modules/reports/dm-search.js';
 import Scrapper from '../modules/scrapper/index.js';
 import LogsActions from '../modules/control/logs-actions.js';
 import ApplicationStateManager from '../modules/state/application-state-manager.js';
+import ScrapperOverviewReport from '../modules/reports/scrapper-overview.js';
 
 export default class App {
 	running = false;
@@ -183,6 +184,7 @@ export default class App {
 			LOGS: LogsReport,
 			SERVICES: ServicesReport,
 			DM_SEARCH: DMSearchReport,
+			SCRAPPER_OVERVIEW: ScrapperOverviewReport,
 		};
 		this.control.registerHandler(this.reports);
 
@@ -295,20 +297,21 @@ export default class App {
 		this.config.read();
 		//this.socialGraph.initialize();
 		this.tick();
+		this.scrapper.start();
 	}
 
 	tick() {
 		if (!this.running) return;
 
-		this.scrapper.loadNext();
 		// this.blobDownloader.downloadNext();
 
-		setTimeout(this.tick.bind(this), 1000);
+		setTimeout(this.tick.bind(this), 100);
 	}
 
 	async stop() {
 		this.running = false;
 		this.config.write();
+		this.scrapper.stop();
 		await this.state.saveAll();
 		this.reports.cleanup();
 		this.relay.stop();
