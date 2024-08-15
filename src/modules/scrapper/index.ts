@@ -48,7 +48,6 @@ export default class Scrapper extends EventEmitter<EventMap> {
 		try {
 			if (!this.app.config.data.owner) throw new Error('Owner not setup yet');
 
-			this.log(`Scrapping next chunk for owner`);
 			const scrapper = this.scrappers.get(this.app.config.data.owner);
 			await scrapper.loadNext();
 		} catch (error) {
@@ -85,7 +84,6 @@ export default class Scrapper extends EventEmitter<EventMap> {
 
 		const { contacts } = await this.ensureData();
 
-		this.log(`Scrapping next chunk for all contacts`);
 		for (const person of contacts) {
 			// await here if the task queue if full
 			if (this.tasks.size >= MAX_TASKS) await this.waitForBlock();

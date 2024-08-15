@@ -81,6 +81,9 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 
 					// if no events where returned, mark complete
 					if (count === 0) {
+						// connection closed before events could be returned, ignore complete
+						if (this.subscription?.closed === true) return;
+
 						this.complete = true;
 						this.log('Got 0 events, complete');
 					} else {
