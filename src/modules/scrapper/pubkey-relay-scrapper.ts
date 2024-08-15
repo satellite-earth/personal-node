@@ -77,7 +77,6 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 				},
 				oneose: () => {
 					this.running = false;
-					this.subscription?.close();
 
 					// if no events where returned, mark complete
 					if (count === 0) {
@@ -93,16 +92,18 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 					this.state.cursor = newCursor - 1;
 					this.emit('chunk', { count, cursor: this.cursor });
 
+					this.subscription?.close();
 					res();
 				},
 				onclose: (reason) => {
-					if (this.subscription?.closed === false) {
+					if (reason !== 'closed by caller') {
 						// unexpected close
-						this.log(`Unexpected close: ${reason}`);
+						this.log(`Error: ${reason}`);
 						this.error = new Error(reason);
 
 						rej(this.error);
 					}
+					res();
 				},
 			});
 		});

@@ -8,7 +8,7 @@ import { getPubkeysFromList } from '@satellite-earth/core/helpers/nostr/lists.js
 import PubkeyScrapper from './pubkey-scrapper.js';
 import createDefer, { Deferred } from '../../helpers/deferred.js';
 
-const MAX_TASKS = 5;
+const MAX_TASKS = 10;
 
 type EventMap = {
 	event: [NostrEvent];

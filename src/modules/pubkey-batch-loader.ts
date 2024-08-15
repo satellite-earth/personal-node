@@ -122,10 +122,10 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 		}
 	}
 
-	async getOrLoadEvent(pubkey: string, relays: string[] = []) {
+	getOrLoadEvent(pubkey: string, relays: string[] = []): Promise<NostrEvent | null> {
 		// if its in the cache, return it
 		const event = this.getEvent(pubkey);
-		if (event) return event;
+		if (event) return Promise.resolve(event);
 
 		// if its already being fetched, return promise
 		const pending = this.pending.get(pubkey);
@@ -134,7 +134,7 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 		return this.loadEvent(pubkey, relays);
 	}
 
-	async loadEvent(pubkey: string, relays: string[] = [], ignoreFailed = false) {
+	loadEvent(pubkey: string, relays: string[] = [], ignoreFailed = false): Promise<NostrEvent | null> {
 		const urls = new Set(this.next.get(pubkey));
 
 		// add relays
@@ -144,12 +144,14 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 		for (const url of this.extraRelays) urls.add(url);
 
 		// filter out failed relays
-		const failed = this.failed.get(pubkey);
-		for (const url of failed) urls.delete(url);
+		if (!ignoreFailed) {
+			const failed = this.failed.get(pubkey);
+			for (const url of failed) urls.delete(url);
+		}
 
 		if (urls.size === 0) {
 			// nothing new to try return null
-			return null;
+			return Promise.resolve(null);
 		}
 
 		// create a promise
