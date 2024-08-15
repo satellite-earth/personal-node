@@ -81,14 +81,23 @@ export default class ControlApi {
 		try {
 			const data = JSON.parse(message.toString()) as string[];
 
-			if (Array.isArray(data) && data[0] === 'CONTROL' && typeof data[1] === 'string' && typeof data[2] === 'string') {
-				if (this.authenticatedConnections.has(ws) || data[1] === 'AUTH') {
-					await this.handleMessage(ws, data as ControlMessage);
+			try {
+				if (
+					Array.isArray(data) &&
+					data[0] === 'CONTROL' &&
+					typeof data[1] === 'string' &&
+					typeof data[2] === 'string'
+				) {
+					if (this.authenticatedConnections.has(ws) || data[1] === 'AUTH') {
+						await this.handleMessage(ws, data as ControlMessage);
+					}
 				}
+			} catch (err) {
+				this.log('Failed to handle Control message', message);
+				this.log(err);
 			}
-		} catch (err) {
-			this.log('Failed to handle Control message', message);
-			this.log(err);
+		} catch (error) {
+			// failed to parse JSON, do nothing
 		}
 	}
 

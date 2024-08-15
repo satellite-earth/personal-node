@@ -8,8 +8,13 @@ import { logger } from '../../logger.js';
 
 const DEFAULT_LIMIT = 1000;
 
+export type PubkeyRelayScrapperState = {
+	cursor?: number;
+};
+
 type EventMap = {
 	event: [NostrEvent];
+	chunk: [{ count: number; cursor: number }];
 };
 
 export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
@@ -19,16 +24,24 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 
 	running = false;
 	complete = false;
-	cursor = dayjs().unix();
 	error?: Error;
+	state: PubkeyRelayScrapperState = {};
+
+	get cursor() {
+		return this.state.cursor || dayjs().unix();
+	}
+	set cursor(v: number) {
+		this.state.cursor = v;
+	}
 
 	private subscription?: Subscription;
 
-	constructor(pubkey: string, relay: AbstractRelay) {
+	constructor(pubkey: string, relay: AbstractRelay, state?: PubkeyRelayScrapperState) {
 		super();
 
 		this.pubkey = pubkey;
 		this.relay = relay;
+		if (state) this.state = state;
 
 		this.log = logger.extend('scrapper:' + pubkey + ':' + relay.url);
 	}
@@ -42,11 +55,12 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 		// wait for relay connection
 		await this.relay.connect();
 
-		this.log(`Requesting events from ${this.cursor}`);
+		const cursor = this.state.cursor || dayjs().unix();
+		this.log(`Requesting events from ${cursor} ${dayjs.unix(cursor).format('lll')}`);
 
 		let count = 0;
-		let newCursor = this.cursor;
-		this.subscription = this.relay.subscribe([{ authors: [this.pubkey], until: this.cursor, limit: DEFAULT_LIMIT }], {
+		let newCursor = cursor;
+		this.subscription = this.relay.subscribe([{ authors: [this.pubkey], until: cursor, limit: DEFAULT_LIMIT }], {
 			onevent: (event) => {
 				this.emit('event', event);
 				count++;
@@ -62,10 +76,11 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 					this.complete = true;
 					this.log('Failed to find any events, marking complete');
 				} else {
-					this.log(`Got ${count} events and moved cursor to ${newCursor} ${dayjs.unix(newCursor).format('LL')}`);
+					this.log(`Got ${count} events and moved cursor to ${newCursor} ${dayjs.unix(newCursor).format('lll')}`);
 				}
 
-				this.cursor = newCursor;
+				this.state.cursor = newCursor;
+				this.emit('chunk', { count, cursor: this.cursor });
 			},
 			onclose: (reason) => {
 				if (this.subscription?.closed === false) {

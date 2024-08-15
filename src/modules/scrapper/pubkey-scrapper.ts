@@ -1,10 +1,10 @@
 import App from '../../app/index.js';
 import { NostrEvent } from 'nostr-tools';
 import { EventEmitter } from 'events';
+import { Debugger } from 'debug';
 
 import { getOutboxes } from '../../helpers/mailboxes.js';
-import PubkeyRelayScrapper from './pubkey-relay-scrapper.js';
-import { Debugger } from 'debug';
+import PubkeyRelayScrapper, { PubkeyRelayScrapperState } from './pubkey-relay-scrapper.js';
 import { logger } from '../../logger.js';
 
 type EventMap = {
@@ -17,6 +17,7 @@ export default class PubkeyScrapper extends EventEmitter<EventMap> {
 	additionalRelays: string[] = [];
 	log: Debugger;
 
+	private failed = new Set<string>();
 	relayScrappers = new Map<string, PubkeyRelayScrapper>();
 
 	constructor(app: App, pubkey: string) {
@@ -43,6 +44,8 @@ export default class PubkeyScrapper extends EventEmitter<EventMap> {
 		const relays = [...outboxes, ...this.additionalRelays];
 		const scrappers: PubkeyRelayScrapper[] = [];
 		for (const url of relays) {
+			if (this.failed.has(url)) continue;
+
 			try {
 				let scrapper = this.relayScrappers.get(url);
 				if (!scrapper) {
@@ -50,12 +53,17 @@ export default class PubkeyScrapper extends EventEmitter<EventMap> {
 					scrapper = new PubkeyRelayScrapper(this.pubkey, relay);
 					scrapper.on('event', (event) => this.emit('event', event));
 
+					// load the state from the database
+					const state = await this.app.state.getMutableState<PubkeyRelayScrapperState>(`${this.pubkey}|${relay.url}`);
+					if (state) scrapper.state = state.proxy;
+
 					this.relayScrappers.set(url, scrapper);
 				}
 
 				scrappers.push(scrapper);
 			} catch (error) {
-				this.log(`Failed to create relay scrapper for ${url}`);
+				this.failed.add(url);
+				if (error instanceof Error) this.log(`Failed to create relay scrapper for ${url}`, error.message);
 			}
 		}
 
@@ -65,6 +73,8 @@ export default class PubkeyScrapper extends EventEmitter<EventMap> {
 			.sort((a, b) => b.cursor - a.cursor);
 
 		const next = incomplete[0];
-		if (next) await next.loadNext();
+		if (next) {
+			await next.loadNext();
+		}
 	}
 }

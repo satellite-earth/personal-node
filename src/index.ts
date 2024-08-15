@@ -151,7 +151,7 @@ server.listen(PORT, () => {
 async function shutdown() {
 	logger('shutting down');
 
-	app.stop();
+	await app.stop();
 	communityMultiplexer.stop();
 	server.close();
 

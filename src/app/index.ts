@@ -24,8 +24,7 @@ import DatabaseActions from '../modules/control/database-actions.js';
 import DirectMessageManager from '../modules/direct-message-manager.js';
 import DirectMessageActions from '../modules/control/dm-actions.js';
 import AddressBook from '../modules/address-book.js';
-import NotificationsManager from '../modules/notifications-manager.js';
-import AppState from '../modules/app-state.js';
+import NotificationsManager from '../modules/notifications/notifications-manager.js';
 import NotificationActions from '../modules/control/notification-actions.js';
 import ProfileBook from '../modules/profile-book.js';
 import ContactBook from '../modules/contact-book.js';
@@ -43,11 +42,12 @@ import { logger } from '../logger.js';
 import DMSearchReport from '../modules/reports/dm-search.js';
 import Scrapper from '../modules/scrapper/index.js';
 import LogsActions from '../modules/control/logs-actions.js';
+import ApplicationStateManager from '../modules/state/application-state-manager.js';
 
 export default class App {
 	running = false;
 	config: ConfigManager;
-	state: AppState;
+	state: ApplicationStateManager;
 	database: Database;
 	eventStore: IEventStore;
 	logStore: LogStore;
@@ -71,9 +71,6 @@ export default class App {
 		const configPath = path.join(dataPath, 'node.json');
 		const statePath = path.join(dataPath, 'state.json');
 
-		this.state = new AppState(statePath);
-		this.state.read();
-
 		this.config = new ConfigManager(configPath);
 		this.config.read();
 
@@ -96,6 +93,9 @@ export default class App {
 		// create log managers
 		this.logStore = new LogStore(this.database.db);
 		this.logStore.setup();
+
+		this.state = new ApplicationStateManager(this.database.db);
+		this.state.setup();
 
 		// Recognize local relay by matching auth string
 		this.pool = new CautiousPool((relay: AbstractRelay, challenge: string) => {
@@ -144,6 +144,7 @@ export default class App {
 
 		// Initializes receiver and scrapper for pulling data from remote relays
 		this.receiver = new Receiver(this);
+
 		this.scrapper = new Scrapper(this);
 
 		// pass events from the scrapper to the event store
@@ -292,7 +293,6 @@ export default class App {
 	start() {
 		this.running = true;
 		this.config.read();
-		this.state.read();
 		//this.socialGraph.initialize();
 		this.tick();
 	}
@@ -306,10 +306,10 @@ export default class App {
 		setTimeout(this.tick.bind(this), 1000);
 	}
 
-	stop() {
+	async stop() {
 		this.running = false;
 		this.config.write();
-		this.state.write();
+		await this.state.saveAll();
 		this.reports.cleanup();
 		this.relay.stop();
 		this.database.destroy();
