@@ -87,7 +87,7 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 						this.log(`Got ${count} events and moved cursor to ${dayjs.unix(newCursor).format('lll')} (${newCursor})`);
 					}
 
-					this.state.cursor = newCursor;
+					this.state.cursor = newCursor - 1;
 					this.emit('chunk', { count, cursor: this.cursor });
 
 					res();

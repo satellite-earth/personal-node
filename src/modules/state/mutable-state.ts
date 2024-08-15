@@ -79,6 +79,5 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 			.run(this.key, JSON.stringify(this.state));
 
 		this.emit('saved', this.state);
-		this.log('Saved');
 	}
 }
