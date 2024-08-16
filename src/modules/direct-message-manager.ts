@@ -3,7 +3,7 @@ import { SubCloser } from 'nostr-tools/abstract-pool';
 import { Subscription } from 'nostr-tools/abstract-relay';
 import { EventEmitter } from 'events';
 
-import { getInboxes } from '../helpers/mailboxes.js';
+import { getInboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 import { logger } from '../logger.js';
 import type App from '../app/index.js';
 

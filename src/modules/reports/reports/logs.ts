@@ -1,7 +1,7 @@
 import { ReportArguments } from '@satellite-earth/core/types/control-api/reports.js';
 
-import { LogEntry } from '../logs/log-store.js';
-import Report from './report.js';
+import { LogEntry } from '../../logs/log-store.js';
+import Report from '../report.js';
 
 /** WARNING: be careful of calling this.log in this class. it could trigger an infinite loop of logging */
 export default class LogsReport extends Report<'LOGS'> {

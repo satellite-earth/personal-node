@@ -1,7 +1,7 @@
 import { NostrEvent } from 'nostr-tools';
 import { ReportArguments } from '@satellite-earth/core/types/control-api/reports.js';
 
-import Report from './report.js';
+import Report from '../report.js';
 
 export default class OverviewReport extends Report<'OVERVIEW'> {
 	readonly type = 'OVERVIEW';

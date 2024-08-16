@@ -12,7 +12,7 @@ import { SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
 
 import { isHex } from '../helpers/pubkey.js';
-import { getOutboxes } from '../helpers/mailboxes.js';
+import { getOutboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
@@ -31,19 +31,21 @@ import ContactBook from '../modules/contact-book.js';
 import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 import ReportActions from '../modules/control/report-actions.js';
-import OverviewReport from '../modules/reports/overview.js';
-import ConversationsReport from '../modules/reports/conversations.js';
-import LogsReport from '../modules/reports/logs.js';
+import OverviewReport from '../modules/reports/reports/overview.js';
+import ConversationsReport from '../modules/reports/reports/conversations.js';
+import LogsReport from '../modules/reports/reports/logs.js';
 import LogStore from '../modules/logs/log-store.js';
-import ServicesReport from '../modules/reports/services.js';
+import ServicesReport from '../modules/reports/reports/services.js';
 import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
 import DecryptionCacheActions from '../modules/control/decryption-cache.js';
 import { logger } from '../logger.js';
-import DMSearchReport from '../modules/reports/dm-search.js';
+import DMSearchReport from '../modules/reports/reports/dm-search.js';
 import Scrapper from '../modules/scrapper/index.js';
 import LogsActions from '../modules/control/logs-actions.js';
 import ApplicationStateManager from '../modules/state/application-state-manager.js';
-import ScrapperOverviewReport from '../modules/reports/scrapper-overview.js';
+import ScrapperStatusReport from '../modules/reports/reports/scrapper-status.js';
+import ScrapperActions from '../modules/control/scrapper-actions.js';
+import ReceiverStatusReport from '../modules/reports/reports/receiver-status.js';
 
 export default class App {
 	running = false;
@@ -145,6 +147,7 @@ export default class App {
 
 		// Initializes receiver and scrapper for pulling data from remote relays
 		this.receiver = new Receiver(this);
+		this.receiver.on('event', (event) => this.eventStore.addEvent(event));
 
 		this.scrapper = new Scrapper(this);
 
@@ -169,6 +172,7 @@ export default class App {
 		this.control = new ControlApi(this, AUTH);
 		this.control.registerHandler(new ConfigActions(this));
 		this.control.registerHandler(new ReceiverActions(this));
+		this.control.registerHandler(new ScrapperActions(this));
 		this.control.registerHandler(new DatabaseActions(this));
 		this.control.registerHandler(new DirectMessageActions(this));
 		this.control.registerHandler(new NotificationActions(this));
@@ -184,7 +188,8 @@ export default class App {
 			LOGS: LogsReport,
 			SERVICES: ServicesReport,
 			DM_SEARCH: DMSearchReport,
-			SCRAPPER_OVERVIEW: ScrapperOverviewReport,
+			SCRAPPER_STATUS: ScrapperStatusReport,
+			RECEIVER_STATUS: ReceiverStatusReport,
 		};
 		this.control.registerHandler(this.reports);
 
@@ -295,9 +300,11 @@ export default class App {
 	start() {
 		this.running = true;
 		this.config.read();
-		//this.socialGraph.initialize();
+
+		if (this.config.data.runReceiverOnBoot) this.receiver.start();
+		if (this.config.data.runScrapperOnBoot) this.scrapper.start();
+
 		this.tick();
-		this.scrapper.start();
 	}
 
 	tick() {
@@ -312,6 +319,7 @@ export default class App {
 		this.running = false;
 		this.config.write();
 		this.scrapper.stop();
+		this.receiver.stop();
 		await this.state.saveAll();
 		this.reports.cleanup();
 		this.relay.stop();

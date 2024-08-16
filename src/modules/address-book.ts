@@ -1,7 +1,7 @@
 import { NostrEvent, kinds } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 
-import { getInboxes, getOutboxes } from '../helpers/mailboxes.js';
+import { getInboxes, getOutboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 import { logger } from '../logger.js';
 import App from '../app/index.js';
 import PubkeyBatchLoader from './pubkey-batch-loader.js';

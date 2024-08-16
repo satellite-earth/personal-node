@@ -1,5 +1,5 @@
 import { ReportArguments } from '@satellite-earth/core/types/control-api/reports.js';
-import Report from './report.js';
+import Report from '../report.js';
 
 export default class DMSearchReport extends Report<'DM_SEARCH'> {
 	readonly type = 'DM_SEARCH';

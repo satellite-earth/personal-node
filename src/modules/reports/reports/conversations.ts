@@ -3,7 +3,7 @@ import { NostrEvent } from 'nostr-tools';
 import { getTagValue } from '@satellite-earth/core/helpers/nostr';
 import SuperMap from '@satellite-earth/core/helpers/super-map.js';
 
-import Report from './report.js';
+import Report from '../report.js';
 
 export default class ConversationsReport extends Report<'CONVERSATIONS'> {
 	readonly type = 'CONVERSATIONS';

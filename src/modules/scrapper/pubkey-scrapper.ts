@@ -3,7 +3,7 @@ import { NostrEvent } from 'nostr-tools';
 import { EventEmitter } from 'events';
 import { Debugger } from 'debug';
 
-import { getOutboxes } from '../../helpers/mailboxes.js';
+import { getOutboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 import PubkeyRelayScrapper, { PubkeyRelayScrapperState } from './pubkey-relay-scrapper.js';
 import { logger } from '../../logger.js';
 

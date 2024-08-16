@@ -1,9 +1,9 @@
 import { NostrEvent } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
-import Report from './report.js';
+import Report from '../report.js';
 
-export default class ScrapperOverviewReport extends Report<'SCRAPPER_OVERVIEW'> {
-	readonly type = 'SCRAPPER_OVERVIEW';
+export default class ScrapperStatusReport extends Report<'SCRAPPER_STATUS'> {
+	readonly type = 'SCRAPPER_STATUS';
 
 	eventsPerSecond: number[] = [0];
 
@@ -20,6 +20,7 @@ export default class ScrapperOverviewReport extends Report<'SCRAPPER_OVERVIEW'> 
 		}
 
 		this.send({
+			running: this.app.scrapper.running,
 			eventsPerSecond: averageEventsPerSecond,
 			activeSubscriptions,
 			pubkeys,
@@ -47,5 +48,9 @@ export default class ScrapperOverviewReport extends Report<'SCRAPPER_OVERVIEW'> 
 			this.app.scrapper.off('event', onEvent);
 			clearInterval(tick);
 		};
+	}
+
+	async execute(args: {}): Promise<void> {
+		this.update();
 	}
 }

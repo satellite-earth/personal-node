@@ -1,11 +1,11 @@
 import { Filter, NostrEvent, SimplePool } from 'nostr-tools';
 import _throttle from 'lodash.throttle';
 import { EventEmitter } from 'events';
+import { getInboxes, getOutboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
+import SuperMap from '@satellite-earth/core/helpers/super-map.js';
 
 import createDefer, { Deferred } from '../helpers/deferred.js';
-import { getInboxes, getOutboxes } from '../helpers/mailboxes.js';
 import { COMMON_CONTACT_RELAYS } from '../env.js';
-import SuperMap from '@satellite-earth/core/helpers/super-map.js';
 
 type EventMap = {
 	event: [NostrEvent];

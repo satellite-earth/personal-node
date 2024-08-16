@@ -1,4 +1,4 @@
-import Report from './report.js';
+import Report from '../report.js';
 
 export default class ServicesReport extends Report<'SERVICES'> {
 	readonly type = 'SERVICES';
