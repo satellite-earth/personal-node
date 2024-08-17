@@ -145,7 +145,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 
 		// sort pubkey relays by popularity
 		for (const [pubkey, relays] of this.pubkeyRelays) {
-			const sorted = Array.from(relays).sort((a, b) => this.relayPubkeys.get(a).size - this.relayPubkeys.get(b).size);
+			const sorted = Array.from(relays).sort((a, b) => this.relayPubkeys.get(b).size - this.relayPubkeys.get(a).size);
 
 			// add the pubkey to their top two relays
 			for (const url of sorted.slice(0, 2)) this.map.get(url).add(pubkey);
