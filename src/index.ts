@@ -98,7 +98,7 @@ expressServer.get('/', (req, res, next) => {
 			description: 'A Satellite Node relay',
 			name: 'Satellite Node',
 			software: 'git+https://github.com/satellite-earth/personal-node.git',
-			supported_nips: [1, 4, 11, 45],
+			supported_nips: [1, 4, 11, 45, 50],
 			pubkey: app.config.data.owner,
 		});
 	} else return next();
