@@ -1,10 +1,15 @@
 #!/bin/env node
 import process from 'node:process';
-import WebSocket, { WebSocketServer } from 'ws';
-import express, { Request } from 'express';
 import path from 'node:path';
 import { createServer } from 'node:http';
+
+import WebSocket, { WebSocketServer } from 'ws';
+import express, { Request } from 'express';
+import cors from 'cors';
 import { mkdirp } from 'mkdirp';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration.js';
+import localizedFormat from 'dayjs/plugin/localizedFormat.js';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
@@ -12,7 +17,11 @@ import { resolve as importMetaResolve } from 'import-meta-resolve';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { CommunityMultiplexer } from './modules/community-multiplexer.js';
-import { logger } from './logger.js';
+import { addListener, logger } from './logger.js';
+
+// add durations plugin
+dayjs.extend(duration);
+dayjs.extend(localizedFormat);
 
 // @ts-expect-error
 global.WebSocket = WebSocket;
@@ -34,6 +43,12 @@ await mkdirp(DATA_PATH);
 const app = new App(DATA_PATH);
 const communityMultiplexer = new CommunityMultiplexer(app.database.db, app.eventStore);
 
+// connect logger to app LogStore
+addListener(({ namespace }, ...args) => {
+	app.logStore.addEntry(namespace, Date.now(), args.join(' '));
+});
+
+// attach app to websocket server
 app.control.attachToServer(wss);
 wss.on('connection', async (ws, req) => {
 	if (req.url === '/') return app.relay.handleConnection(ws, req);
@@ -54,6 +69,8 @@ const blobServer = new DesktopBlobServer(app.blobStorage, app.blobMetadata);
 // Create http server
 const expressServer = express();
 
+// setup cors
+expressServer.use(cors());
 expressServer.use(blobServer.router);
 
 function getPublicRelayAddressFromRequest(req: Request) {
@@ -69,8 +86,26 @@ function getPublicRelayAddressFromRequest(req: Request) {
 	return url;
 }
 
+// health endpoint
+expressServer.get('/health', (req, res) => {
+	res.status(200).send('Healthy');
+});
+
+// NIP-11
 expressServer.get('/', (req, res, next) => {
-	// if the app isn't setup redirect to the setup view
+	if (req.headers.accept === 'application/nostr+json') {
+		res.send({
+			description: 'A Satellite Node relay',
+			name: 'Satellite Node',
+			software: 'git+https://github.com/satellite-earth/personal-node.git',
+			supported_nips: [1, 4, 11, 45, 50],
+			pubkey: app.config.data.owner,
+		});
+	} else return next();
+});
+
+// if the app isn't setup redirect to the setup view
+expressServer.get('/', (req, res, next) => {
 	if (!app.config.data.owner) {
 		logger('Redirecting to setup view');
 
@@ -83,7 +118,6 @@ expressServer.get('/', (req, res, next) => {
 });
 
 if (REDIRECT_APP_URL) {
-	// TODO: add publicly assessable address so app can connect
 	expressServer.get('*', (req, res) => {
 		// redirect to other web ui
 		const url = new URL('/connect', REDIRECT_APP_URL);
@@ -108,7 +142,7 @@ app.start();
 // Listen for http connections
 server.listen(PORT, () => {
 	logger(`server running on`, PORT);
-	logger('AUTH', AUTH);
+	console.info('AUTH', AUTH);
 
 	if (process.send) process.send({ type: 'RELAY_READY' });
 });
@@ -117,7 +151,7 @@ server.listen(PORT, () => {
 async function shutdown() {
 	logger('shutting down');
 
-	app.stop();
+	await app.stop();
 	communityMultiplexer.stop();
 	server.close();
 

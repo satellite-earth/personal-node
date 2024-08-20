@@ -1,48 +1,44 @@
-//import { IEventStore } from '@satellite-earth/core';
 import { NotificationType, WebSubscription } from '@satellite-earth/core/types/control-api/notifications.js';
 import { NostrEvent, kinds } from 'nostr-tools';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import dayjs from 'dayjs';
 import webPush from 'web-push';
 
-//import AppState from './app-state.js';
-import { logger } from '../logger.js';
-import App from '../app/index.js';
+import { logger } from '../../logger.js';
+import App from '../../app/index.js';
+
+export type NotificationsManagerState = {
+	subscriptions: WebSubscription[];
+};
 
 export default class NotificationsManager {
 	log = logger.extend('NotificationsManager');
 	app: App;
 	lastRead: number = dayjs().unix();
 
-	// owner?: string;
-	// state: AppState;
 	keys: webPush.VapidKeys = webPush.generateVAPIDKeys();
 
-	get subscriptions() {
-		return this.app.state.data.subscriptions;
-	}
-	set subscriptions(v) {
-		this.app.state.data.subscriptions = v;
-	}
+	state: NotificationsManagerState = { subscriptions: [] };
 
-	//eventStore: IEventStore;
-	constructor(/*eventStore: IEventStore, state: AppState*/ app: App) {
-		// this.eventStore = eventStore;
-		// this.state = state;
+	constructor(app: App) {
 		this.app = app;
 		this.app.eventStore.on('event:inserted', this.handleEvent.bind(this));
 	}
 
+	async setup() {
+		this.state = (await this.app.state.getMutableState<NotificationsManagerState>('notification-manager')).proxy;
+	}
+
 	registerSubscription(sub: WebSubscription) {
 		const key = sub.keys.p256dh;
-		if (this.subscriptions.some((s) => s.keys.p256dh === key)) return;
+		if (this.state.subscriptions.some((s) => s.keys.p256dh === key)) return;
 
 		this.log(`Added new subscription ${key}`);
-		this.subscriptions = [...this.subscriptions, sub];
+		this.state.subscriptions = [...this.state.subscriptions, sub];
 	}
 	unregisterSubscription(key: string) {
 		this.log(`Removed subscription ${key}`);
-		this.subscriptions = this.subscriptions.filter((s) => s.keys.p256dh !== key);
+		this.state.subscriptions = this.state.subscriptions.filter((s) => s.keys.p256dh !== key);
 	}
 
 	handleEvent(event: NostrEvent) {
@@ -58,8 +54,8 @@ export default class NotificationsManager {
 	}
 
 	async notify(notification: NotificationType) {
-		this.log(`Sending notification to ${this.subscriptions.length} subscriptions`);
-		for (const sub of this.subscriptions) {
+		this.log(`Sending notification to ${this.state.subscriptions.length} subscriptions`);
+		for (const sub of this.state.subscriptions) {
 			try {
 				await webPush.sendNotification(sub, JSON.stringify(notification), {
 					vapidDetails: {

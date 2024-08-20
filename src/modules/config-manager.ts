@@ -10,6 +10,8 @@ export const defaultConfig: PrivateNodeConfig = {
 	//relays: [],
 	//cacheLevel: 2,
 	autoListen: false,
+	runScrapperOnBoot: false,
+	runReceiverOnBoot: true,
 	logsEnabled: true,
 	requireReadAuth: false,
 	publicAddresses: [],

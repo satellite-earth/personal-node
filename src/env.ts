@@ -5,6 +5,7 @@
 
 import 'dotenv/config.js';
 import { randomBytes } from 'crypto';
+import { safeRelayUrls } from '@satellite-earth/core/helpers/nostr/relays.js';
 
 export const OWNER_PUBKEY = process.env.OWNER_PUBKEY;
 export const PUBLIC_ADDRESS = process.env.PUBLIC_ADDRESS;
@@ -18,9 +19,9 @@ export const AUTH = process.env.AUTH || randomBytes(16).toString('hex');
 export const REDIRECT_APP_URL = process.env.REDIRECT_APP_URL;
 
 export const BOOTSTRAP_RELAYS = process.env.BOOTSTRAP_RELAYS
-	? process.env.BOOTSTRAP_RELAYS.split(',')
-	: ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.nostr.band'];
+	? safeRelayUrls(process.env.BOOTSTRAP_RELAYS.split(','))
+	: safeRelayUrls(['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.nostr.band']);
 
 export const COMMON_CONTACT_RELAYS = process.env.COMMON_CONTACT_RELAYS
-	? process.env.COMMON_CONTACT_RELAYS.split(',')
-	: ['wss://purplepag.es', 'wss://user.kindpag.es', 'wss://relay.nos.social'];
+	? safeRelayUrls(process.env.COMMON_CONTACT_RELAYS.split(','))
+	: safeRelayUrls(['wss://purplepag.es', 'wss://user.kindpag.es', 'wss://relay.nos.social']);
