@@ -11,5 +11,5 @@
 		"strict": true,
 		"sourceMap": true
 	},
-	"include": ["src", "../core/src/helpers/nostr/mailboxes.ts", "../core/src/helpers/nostr/relays.ts"]
+	"include": ["src"]
 }
