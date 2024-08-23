@@ -8,9 +8,6 @@ on:
     tags:
       - 'v*.*.*'
 
-env:
-  NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
 jobs:
   publish-gpr:
     runs-on: ubuntu-latest
@@ -25,7 +22,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://npm.pkg.github.com/
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -34,5 +30,12 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Publish
+      - name: Publish to NPM
         run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
+
+      - name: Publish to Github
+        run: pnpm publish --no-git-checks --registry https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
