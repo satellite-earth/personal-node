@@ -1,5 +1,11 @@
 # @satellite-earth/personal-node
 
+## 0.3.1
+
+### Patch Changes
+
+- Fix hash bang script
+
 ## 0.2.2
 
 ### Patch Changes
