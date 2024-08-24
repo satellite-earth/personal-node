@@ -1,4 +1,4 @@
-#!/bin/env node
+#!/usr/bin/env node
 import process from 'node:process';
 import path from 'node:path';
 import { createServer } from 'node:http';

@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
 FROM node:20-slim AS base
-ARG NODE_AUTH_TOKEN
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -8,8 +7,6 @@ RUN corepack enable
 
 WORKDIR /app
 COPY . /app
-# set the auth token in the .npmrc file
-RUN sed -i '1i //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' .npmrc
 
 FROM base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
