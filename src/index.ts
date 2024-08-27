@@ -11,7 +11,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration.js';
 import localizedFormat from 'dayjs/plugin/localizedFormat.js';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
-import { DesktopBlobServer, terminateConnectionsInterval } from '@satellite-earth/core';
+import { DesktopBlobServer, NostrRelay, terminateConnectionsInterval } from '@satellite-earth/core';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
 import App from './app/index.js';
@@ -98,7 +98,7 @@ expressServer.get('/', (req, res, next) => {
 			description: 'A Satellite Node relay',
 			name: 'Satellite Node',
 			software: 'git+https://github.com/satellite-earth/personal-node.git',
-			supported_nips: [1, 4, 11, 45, 50],
+			supported_nips: NostrRelay.SUPPORTED_NIPS,
 			pubkey: app.config.data.owner,
 		});
 	} else return next();

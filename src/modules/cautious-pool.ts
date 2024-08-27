@@ -90,7 +90,6 @@ export default class CautiousPool extends SimplePool {
 	}
 
 	[Symbol.iterator](): IterableIterator<[string, AbstractRelay]> {
-		// @ts-expect-error
 		return this.relays[Symbol.iterator]();
 	}
 }
