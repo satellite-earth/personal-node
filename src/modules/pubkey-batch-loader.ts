@@ -158,7 +158,7 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 		const defer = createDefer<NostrEvent | null>();
 		this.pending.set(pubkey, defer);
 
-		// add pubkey and relay to next queeu
+		// add pubkey and relay to next queue
 		this.next.set(pubkey, Array.from(urls));
 
 		// trigger queue
