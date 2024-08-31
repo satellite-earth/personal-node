@@ -51,7 +51,17 @@ export default class AddressBook {
 		this.loader.handleEvent(event);
 	}
 
-	async loadMailboxes(pubkey: string, relays: string[] = []) {
+	async loadMailboxes(pubkey: string, relays?: string[]) {
 		return this.loader.getOrLoadEvent(pubkey, relays);
+	}
+
+	async loadOutboxes(pubkey: string, relays?: string[]) {
+		const mailboxes = await this.loadMailboxes(pubkey, relays);
+		return mailboxes && getOutboxes(mailboxes);
+	}
+
+	async loadInboxes(pubkey: string, relays?: string[]) {
+		const mailboxes = await this.loadMailboxes(pubkey, relays);
+		return mailboxes && getInboxes(mailboxes);
 	}
 }

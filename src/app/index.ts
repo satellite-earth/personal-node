@@ -121,23 +121,6 @@ export default class App {
 		this.profileBook = new ProfileBook(this);
 		this.contactBook = new ContactBook(this);
 
-		// Handle possible additional actions when
-		// the event store receives a new message
-		this.eventStore.on('event:inserted', (event) => {
-			// Fetch profiles for all incoming DMs
-			switch (event.kind) {
-				case kinds.EncryptedDirectMessage:
-					const profile = this.profileBook.getProfile(event.pubkey);
-					if (!profile) {
-						this.profileBook.loadProfile(event.pubkey, this.addressBook.getOutboxes(event.pubkey));
-						this.addressBook.loadMailboxes(event.pubkey).then((mailboxes) => {
-							this.profileBook.loadProfile(event.pubkey, mailboxes ? getOutboxes(mailboxes) : undefined);
-						});
-					}
-					break;
-			}
-		});
-
 		// Setup the notifications manager
 		this.notifications = new NotificationsManager(this /*this.eventStore, this.state*/);
 		this.notifications.keys = {
@@ -160,12 +143,6 @@ export default class App {
 		// set watchInbox for owner when config is loaded or changed
 		this.config.on('updated', (config) => {
 			if (config.owner) this.directMessageManager.watchInbox(config.owner);
-		});
-
-		// update profiles when conversations are opened
-		this.directMessageManager.on('open', (a, b) => {
-			this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
-			this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
 		});
 
 		// API for controlling the node
@@ -193,6 +170,7 @@ export default class App {
 		};
 		this.control.registerHandler(this.reports);
 
+		// if process has an RPC interface, attach control api to it
 		if (process.send) this.control.attachToProcess(process);
 
 		this.blobMetadata = new BlossomSQLite(this.database.db);
@@ -202,6 +180,12 @@ export default class App {
 		this.relay = new NostrRelay(this.eventStore);
 		this.relay.sendChallenge = true;
 		this.relay.requireRelayInAuth = false;
+
+		// update profiles when conversations are opened
+		this.directMessageManager.on('open', (a, b) => {
+			this.profileBook.loadProfile(a, this.addressBook.getOutboxes(a));
+			this.profileBook.loadProfile(b, this.addressBook.getOutboxes(b));
+		});
 
 		// only allow the owner to NIP-42 authenticate with the relay
 		this.relay.checkAuth = (ws, auth) => {
@@ -274,28 +258,33 @@ export default class App {
 			return next();
 		});
 
+		// Handle possible additional actions when the event store receives a new message
+		this.eventStore.on('event:inserted', (event) => {
+			const loadProfile = (pubkey: string) => {
+				const profile = this.profileBook.getProfile(pubkey);
+				if (!profile) {
+					this.profileBook.loadProfile(pubkey, this.addressBook.getOutboxes(pubkey));
+					this.addressBook.loadOutboxes(pubkey).then((outboxes) => {
+						this.profileBook.loadProfile(pubkey, outboxes ?? undefined);
+					});
+				}
+			};
+
+			// Fetch profiles for all incoming DMs
+			switch (event.kind) {
+				case kinds.EncryptedDirectMessage:
+					loadProfile(event.pubkey);
+					break;
+				default:
+					loadProfile(event.pubkey);
+					break;
+			}
+		});
+
 		// Read the config again, this fires the "loaded" and "updated" events to synchronize all the other services
 		// NOTE: its important this is called last. otherwise any this.config.on("update") listeners above will note fire
 		this.config.read();
 	}
-
-	// TODO this method can be removed
-	// the receiver just needs to know the
-	// owner pubkey and have access to the
-	// address book to get the outboxes
-	/*
-	private updateReceiverFromConfig(config = this.config.data) {
-		this.receiver.pubkeys.clear();
-		this.receiver.explicitRelays.clear();
-
-		if (config.owner) this.receiver.pubkeys.add(config.owner);
-		for (const pubkey of config.pubkeys) this.receiver.pubkeys.add(pubkey);
-
-		for (const relay of config.relays) this.receiver.explicitRelays.add(relay.url);
-
-		this.receiver.cacheLevel = config.cacheLevel;
-	}
-	*/
 
 	start() {
 		this.running = true;
