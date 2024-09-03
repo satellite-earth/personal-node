@@ -1,18 +1,21 @@
 import path from 'path';
+import { WebSocketServer } from 'ws';
+import { createServer, Server } from 'http';
 import { IEventStore, NostrRelay, SQLiteEventStore } from '@satellite-earth/core';
 import { getDMRecipient } from '@satellite-earth/core/helpers/nostr';
 import { BlossomSQLite, IBlobMetadataStore, LocalStorage } from 'blossom-server-sdk';
 import { kinds } from 'nostr-tools';
-import webPush from 'web-push';
 import { AbstractRelay } from 'nostr-tools/abstract-relay';
+import express, { Express } from 'express';
+import { EventEmitter } from 'events';
+import cors from 'cors';
 
 import Database from './database.js';
 
-import { SENSITIVE_KINDS } from '../const.js';
-import { AUTH, DATA_PATH, OWNER_PUBKEY } from '../env.js';
+import { NIP_11_SOFTWARE_URL, SENSITIVE_KINDS } from '../const.js';
+import { AUTH, DATA_PATH, OWNER_PUBKEY, PORT } from '../env.js';
 
 import { isHex } from '../helpers/pubkey.js';
-import { getOutboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
@@ -46,11 +49,25 @@ import ApplicationStateManager from '../modules/state/application-state-manager.
 import ScrapperStatusReport from '../modules/reports/reports/scrapper-status.js';
 import ScrapperActions from '../modules/control/scrapper-actions.js';
 import ReceiverStatusReport from '../modules/reports/reports/receiver-status.js';
+import ExternalServers from '../modules/external-servers/index.js';
+import SecretsManager from '../modules/secrets-manager.js';
 
-export default class App {
+type EventMap = {
+	listening: [];
+};
+
+export default class App extends EventEmitter<EventMap> {
 	running = false;
 	config: ConfigManager;
+	secrets: SecretsManager;
 	state: ApplicationStateManager;
+
+	server: Server;
+	wss: WebSocketServer;
+	express: Express;
+
+	externalServers: ExternalServers;
+
 	database: Database;
 	eventStore: IEventStore;
 	logStore: LogStore;
@@ -71,24 +88,44 @@ export default class App {
 	decryptionCache: DecryptionCache;
 
 	constructor(dataPath: string) {
-		const configPath = path.join(dataPath, 'node.json');
-		const statePath = path.join(dataPath, 'state.json');
+		super();
 
-		this.config = new ConfigManager(configPath);
+		this.config = new ConfigManager(path.join(dataPath, 'node.json'));
 		this.config.read();
 
-		// setup VAPID keys if they don't exist
-		if (!this.config.data.vapidPrivateKey || !this.config.data.vapidPublicKey) {
-			const keys = webPush.generateVAPIDKeys();
-			this.config.data.vapidPublicKey = keys.publicKey;
-			this.config.data.vapidPrivateKey = keys.privateKey;
-			this.config.write();
-		}
+		this.secrets = new SecretsManager(path.join(dataPath, 'secrets.json'));
+		this.secrets.read();
+
+		// copy the vapid public key over to config so the web ui can access it
+		// TODO: this should be moved to another place
+		this.secrets.on('updated', () => {
+			this.config.data.vapidPublicKey = this.secrets.get('vapidPublicKey');
+		});
 
 		// set owner pubkey from env variable
 		if (!this.config.data.owner && OWNER_PUBKEY && isHex(OWNER_PUBKEY)) {
 			this.config.data.owner = OWNER_PUBKEY;
 		}
+
+		// create http and ws server interface
+		this.server = createServer();
+		this.externalServers = new ExternalServers(this);
+
+		// setup express
+		this.express = express();
+		this.express.use(cors());
+		this.setupExpress();
+
+		// pass requests to express server
+		this.server.on('request', this.express);
+
+		// create websocket server
+		this.wss = new WebSocketServer({ server: this.server });
+
+		// Fix CORS for websocket
+		this.wss.on('headers', (headers, request) => {
+			headers.push('Access-Control-Allow-Origin: *');
+		});
 
 		// Init embedded sqlite database
 		this.database = new Database({ directory: dataPath });
@@ -124,8 +161,8 @@ export default class App {
 		// Setup the notifications manager
 		this.notifications = new NotificationsManager(this /*this.eventStore, this.state*/);
 		this.notifications.keys = {
-			publicKey: this.config.data.vapidPublicKey!,
-			privateKey: this.config.data.vapidPrivateKey!,
+			publicKey: this.secrets.get('vapidPublicKey'),
+			privateKey: this.secrets.get('vapidPrivateKey'),
 		};
 
 		// Initializes receiver and scrapper for pulling data from remote relays
@@ -170,6 +207,9 @@ export default class App {
 		};
 		this.control.registerHandler(this.reports);
 
+		// connect control api to websocket server
+		this.control.attachToServer(this.wss);
+
 		// if process has an RPC interface, attach control api to it
 		if (process.send) this.control.attachToProcess(process);
 
@@ -180,6 +220,9 @@ export default class App {
 		this.relay = new NostrRelay(this.eventStore);
 		this.relay.sendChallenge = true;
 		this.relay.requireRelayInAuth = false;
+
+		// attach relay to websocket server
+		this.relay.attachToServer(this.wss);
 
 		// update profiles when conversations are opened
 		this.directMessageManager.on('open', (a, b) => {
@@ -286,7 +329,26 @@ export default class App {
 		this.config.read();
 	}
 
-	start() {
+	setupExpress() {
+		this.express.get('/health', (req, res) => {
+			res.status(200).send('Healthy');
+		});
+
+		// NIP-11
+		this.express.get('/', (req, res, next) => {
+			if (req.headers.accept === 'application/nostr+json') {
+				res.send({
+					name: this.config.data.name,
+					description: this.config.data.description,
+					software: NIP_11_SOFTWARE_URL,
+					supported_nips: NostrRelay.SUPPORTED_NIPS,
+					pubkey: this.config.data.owner,
+				});
+			} else return next();
+		});
+	}
+
+	async start() {
 		this.running = true;
 		this.config.read();
 
@@ -294,12 +356,23 @@ export default class App {
 		if (this.config.data.runScrapperOnBoot) this.scrapper.start();
 
 		this.tick();
+
+		// start http server listening
+		await new Promise<void>((res) => this.server.listen(PORT, () => res()));
+
+		logger(`server listening on`, PORT);
+		console.info('AUTH', AUTH);
+
+		if (process.send) process.send({ type: 'RELAY_READY' });
+
+		this.emit('listening');
+
+		await this.externalServers.start();
+		logger(`External addresses`, this.externalServers.addresses);
 	}
 
 	tick() {
 		if (!this.running) return;
-
-		// this.blobDownloader.downloadNext();
 
 		setTimeout(this.tick.bind(this), 100);
 	}
@@ -314,5 +387,10 @@ export default class App {
 		this.relay.stop();
 		this.database.destroy();
 		this.receiver.destroy();
+
+		await this.externalServers.stop();
+
+		// wait for server to close
+		await new Promise<void>((res) => this.server.close(() => res()));
 	}
 }
