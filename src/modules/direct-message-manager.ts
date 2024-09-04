@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import { getInboxes } from '@satellite-earth/core/helpers/nostr/mailboxes.js';
 import { logger } from '../logger.js';
 import type App from '../app/index.js';
+import { getRelaysFromContactList } from '@satellite-earth/core/helpers/nostr/contacts.js';
 
 type EventMap = {
 	open: [string, string];
@@ -44,11 +45,26 @@ export default class DirectMessageManager extends EventEmitter<EventMap> {
 		const addressedTo = event.tags.find((t) => t[0] === 'p')?.[1];
 		if (!addressedTo) return;
 
-		const mailboxes = await this.app.addressBook.loadMailboxes(addressedTo);
+		// get users inboxes
+		let relays = await this.app.addressBook.loadInboxes(addressedTo);
 
-		const inboxes = getInboxes(mailboxes, this.explicitRelays);
-		this.log(`Forwarding message to ${inboxes.length} relays`);
-		const results = await Promise.allSettled(this.app.pool.publish(inboxes, event));
+		if (!relays || relays.length === 0) {
+			// try to send the DM to the users legacy app relays
+			const contacts = await this.app.contactBook.loadContacts(addressedTo);
+			if (contacts) {
+				const appRelays = getRelaysFromContactList(contacts);
+
+				if (appRelays) relays = appRelays.filter((r) => r.write).map((r) => r.url);
+			}
+		}
+
+		if (!relays || relays.length === 0) {
+			// use fallback relays
+			relays = this.explicitRelays;
+		}
+
+		this.log(`Forwarding message to ${relays.length} relays`);
+		const results = await Promise.allSettled(this.app.pool.publish(relays, event));
 
 		return results;
 	}
