@@ -80,6 +80,14 @@ if (REDIRECT_APP_URL) {
 	});
 }
 
+// log uncaught errors
+process.on('unhandledRejection', (reason, promise) => {
+	if (reason instanceof Error) {
+		console.log('Unhandled Rejection');
+		console.log(reason);
+	} else console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // start the app
 await app.start();
 
@@ -93,11 +101,3 @@ async function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-
-// log uncaught errors
-process.on('unhandledRejection', (reason, promise) => {
-	if (reason instanceof Error) {
-		console.log('Unhandled Rejection');
-		console.log(reason);
-	} else console.log('Unhandled Rejection at:', promise, 'reason:', reason);
-});
