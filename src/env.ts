@@ -12,6 +12,8 @@ export const PUBLIC_ADDRESS = process.env.PUBLIC_ADDRESS;
 export const USE_PREBUILT_SQLITE_BINDINGS = typeof process.env.USE_PREBUILT_SQLITE_BINDINGS !== 'undefined';
 export const DATA_PATH = process.env.DATA_PATH || './data';
 export const PORT = parseInt(process.env.PORT ?? '') || 2012;
+export const TOR_PROXY = process.env.TOR_PROXY;
+export const I2P_PROXY = process.env.I2P_PROXY;
 
 // get AUTH token or generate a random open at startup
 export const AUTH = process.env.AUTH || randomBytes(16).toString('hex');

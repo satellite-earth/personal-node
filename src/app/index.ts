@@ -368,7 +368,6 @@ export default class App extends EventEmitter<EventMap> {
 		this.emit('listening');
 
 		await this.externalServers.start();
-		logger(`External addresses`, this.externalServers.addresses);
 	}
 
 	tick() {
