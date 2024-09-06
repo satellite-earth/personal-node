@@ -36,9 +36,9 @@ export default class ConfigManager extends ReactiveJsonFileSync<PrivateNodeConfi
 			// explicitly set default values if fields are not set
 			for (const [key, value] of Object.entries(defaultConfig)) {
 				// @ts-expect-error
-				if (this.data[key] === undefined) {
+				if (this.db[key] === undefined) {
 					// @ts-expect-error
-					this.data[key] = value;
+					this.db[key] = value;
 				}
 			}
 
