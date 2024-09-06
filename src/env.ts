@@ -15,6 +15,8 @@ export const PORT = parseInt(process.env.PORT ?? '') || 2012;
 export const TOR_PROXY = process.env.TOR_PROXY;
 export const I2P_PROXY = process.env.I2P_PROXY;
 
+export const TOR_ADDRESS = process.env.TOR_ADDRESS;
+
 // get AUTH token or generate a random open at startup
 export const AUTH = process.env.AUTH || randomBytes(16).toString('hex');
 

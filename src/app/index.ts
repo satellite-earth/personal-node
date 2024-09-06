@@ -49,8 +49,10 @@ import ApplicationStateManager from '../modules/state/application-state-manager.
 import ScrapperStatusReport from '../modules/reports/reports/scrapper-status.js';
 import ScrapperActions from '../modules/control/scrapper-actions.js';
 import ReceiverStatusReport from '../modules/reports/reports/receiver-status.js';
-import ExternalServers from '../modules/external-servers/index.js';
+import InboundNetworkManager from '../modules/network/inbound/index.js';
 import SecretsManager from '../modules/secrets-manager.js';
+import NetworkStatusReport from '../modules/reports/reports/network-status.js';
+import outboundNetwork, { OutboundNetworkManager } from '../modules/network/outbound/index.js';
 
 type EventMap = {
 	listening: [];
@@ -66,7 +68,8 @@ export default class App extends EventEmitter<EventMap> {
 	wss: WebSocketServer;
 	express: Express;
 
-	externalServers: ExternalServers;
+	inboundNetwork: InboundNetworkManager;
+	outboundNetwork: OutboundNetworkManager;
 
 	database: Database;
 	eventStore: IEventStore;
@@ -109,7 +112,11 @@ export default class App extends EventEmitter<EventMap> {
 
 		// create http and ws server interface
 		this.server = createServer();
-		this.externalServers = new ExternalServers(this);
+		this.inboundNetwork = new InboundNetworkManager(this);
+		this.outboundNetwork = outboundNetwork;
+
+		/** make the outbound network reflect the app config */
+		this.outboundNetwork.listenToAppConfig(this.config);
 
 		// setup express
 		this.express = express();
@@ -204,6 +211,7 @@ export default class App extends EventEmitter<EventMap> {
 			DM_SEARCH: DMSearchReport,
 			SCRAPPER_STATUS: ScrapperStatusReport,
 			RECEIVER_STATUS: ReceiverStatusReport,
+			NETWORK_STATUS: NetworkStatusReport,
 		};
 		this.control.registerHandler(this.reports);
 
@@ -360,14 +368,14 @@ export default class App extends EventEmitter<EventMap> {
 		// start http server listening
 		await new Promise<void>((res) => this.server.listen(PORT, () => res()));
 
-		logger(`server listening on`, PORT);
+		logger(`Listening on`, PORT);
 		console.info('AUTH', AUTH);
 
 		if (process.send) process.send({ type: 'RELAY_READY' });
 
 		this.emit('listening');
 
-		await this.externalServers.start();
+		await this.inboundNetwork.start();
 	}
 
 	tick() {
@@ -387,7 +395,8 @@ export default class App extends EventEmitter<EventMap> {
 		this.database.destroy();
 		this.receiver.destroy();
 
-		await this.externalServers.stop();
+		await this.inboundNetwork.stop();
+		await this.outboundNetwork.stop();
 
 		// wait for server to close
 		await new Promise<void>((res) => this.server.close(() => res()));

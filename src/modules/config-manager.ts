@@ -20,6 +20,10 @@ export const defaultConfig: PrivateNodeConfig = {
 	publicAddresses: [],
 
 	hyperEnabled: false,
+
+	enableTorConnections: true,
+	enableI2PConnections: true,
+	enableHyperConnections: false,
 };
 
 export default class ConfigManager extends ReactiveJsonFileSync<PrivateNodeConfig> {
@@ -42,8 +46,8 @@ export default class ConfigManager extends ReactiveJsonFileSync<PrivateNodeConfi
 		});
 	}
 
-	/** @deprecated use .update or .data[key] = value instead */
 	setField(field: keyof PrivateNodeConfig, value: any) {
+		this.log(`Setting ${field} to ${value}`);
 		// @ts-expect-error
 		this.data[field] = value;
 

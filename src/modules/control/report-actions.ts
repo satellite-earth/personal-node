@@ -37,7 +37,7 @@ export default class ReportActions implements ControlMessageHandler {
 		if (reports) {
 			for (const [id, report] of reports) report.close();
 
-			this.log(`Closed ${reports.size} reports for disconnected socket`);
+			if (reports.size) this.log(`Closed ${reports.size} reports for disconnected socket`);
 			this.reports.delete(ws);
 		}
 	}

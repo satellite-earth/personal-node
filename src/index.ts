@@ -11,19 +11,18 @@ import localizedFormat from 'dayjs/plugin/localizedFormat.js';
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import { resolve as importMetaResolve } from 'import-meta-resolve';
 
-import TransparentProxyWebSocket from './modules/external-connections/websocket.js';
+import OutboundProxyWebSocket from './modules/network/outbound/websocket.js';
 import App from './app/index.js';
 import { PORT, DATA_PATH, AUTH, REDIRECT_APP_URL, PUBLIC_ADDRESS } from './env.js';
 import { addListener, logger } from './logger.js';
-import { listenToAppConfig } from './modules/external-connections/hyper.js';
 
 // add durations plugin
 dayjs.extend(duration);
 dayjs.extend(localizedFormat);
 
 // @ts-expect-error
-global.WebSocket = TransparentProxyWebSocket;
-useWebSocketImplementation(TransparentProxyWebSocket);
+global.WebSocket = OutboundProxyWebSocket;
+useWebSocketImplementation(OutboundProxyWebSocket);
 
 // create app
 await mkdirp(DATA_PATH);
@@ -33,9 +32,6 @@ const app = new App(DATA_PATH);
 addListener(({ namespace }, ...args) => {
 	app.logStore.addEntry(namespace, Date.now(), args.join(' '));
 });
-
-// start and stop the hyper proxy based on app config
-listenToAppConfig(app.config);
 
 function getPublicRelayAddressFromRequest(req: Request) {
 	let url: URL;

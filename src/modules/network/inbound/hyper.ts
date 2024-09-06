@@ -1,35 +1,38 @@
 import HolesailServer from 'holesail-server';
 import { encodeAddress } from 'hyper-address';
 import { hexToBytes } from '@noble/hashes/utils';
-
-import App from '../../app/index.js';
-import { IExternalServer } from './interface.js';
-import { logger } from '../../logger.js';
 import { AddressInfo } from 'net';
 
+import App from '../../../app/index.js';
+import { InboundInterface } from '../interfaces.js';
+import { logger } from '../../../logger.js';
+
 /** manages a holesail-server instance that points to the app.server http server */
-export default class HyperServer implements IExternalServer {
+export default class HyperInbound implements InboundInterface {
 	app: App;
 	hyper?: HolesailServer;
-	log = logger.extend('HyperServer');
+	log = logger.extend('HyperInbound');
 
+	get available() {
+		return true;
+	}
 	running = false;
-	startError?: Error;
-	addresses?: string[] | undefined;
+	error?: Error;
+	address?: string;
 
 	constructor(app: App) {
 		this.app = app;
 	}
 
 	async start(address: AddressInfo) {
-		this.running = true;
-		this.startError = undefined;
-
-		this.log(`Importing and starting hyperdht node`);
-
 		try {
+			this.running = true;
+			this.error = undefined;
+
+			this.log(`Importing and starting hyperdht node`);
+
 			const { default: HolesailServer } = await import('holesail-server');
-			const { getOrCreateNode } = await import('../../sidecars/hyperdht.js');
+			const { getOrCreateNode } = await import('../../../sidecars/hyperdht.js');
 
 			const hyper = (this.hyper = new HolesailServer());
 			hyper.dht = getOrCreateNode();
@@ -43,8 +46,8 @@ export default class HyperServer implements IExternalServer {
 						buffSeed: this.app.secrets.get('hyperKey'),
 					},
 					() => {
-						const address = encodeAddress(hexToBytes(hyper.getPublicKey()));
-						this.addresses = [address];
+						const address = 'http://' + encodeAddress(hexToBytes(hyper.getPublicKey()));
+						this.address = address;
 
 						this.log(`Listening on ${address}`);
 						res();
@@ -53,7 +56,7 @@ export default class HyperServer implements IExternalServer {
 			});
 		} catch (error) {
 			this.running = false;
-			if (error instanceof Error) this.startError = error;
+			if (error instanceof Error) this.error = error;
 		}
 	}
 
@@ -62,6 +65,7 @@ export default class HyperServer implements IExternalServer {
 		// disabled because holesail-server destroys the hyperdht node
 		// this.hyper?.destroy();
 		this.running = false;
-		this.startError = undefined;
+		this.address = undefined;
+		this.error = undefined;
 	}
 }
