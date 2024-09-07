@@ -4,6 +4,7 @@ import { logger } from '../../../logger.js';
 import { getIPAddresses } from '../../../helpers/ip.js';
 import TorInbound from './tor.js';
 import ConfigManager from '../../config-manager.js';
+import I2PInbound from './i2p.js';
 
 /** manages all inbound servers on other networks: hyper, tor, i2p, etc... */
 export default class InboundNetworkManager {
@@ -11,6 +12,7 @@ export default class InboundNetworkManager {
 	log = logger.extend('InboundNetworkManager');
 	hyper: HyperInbound;
 	tor: TorInbound;
+	i2p: I2PInbound;
 
 	running = false;
 	get addresses() {
@@ -26,6 +28,7 @@ export default class InboundNetworkManager {
 
 		this.hyper = new HyperInbound(app);
 		this.tor = new TorInbound(app);
+		this.i2p = new I2PInbound(app);
 
 		this.listenToAppConfig(app.config);
 	}
@@ -50,7 +53,10 @@ export default class InboundNetworkManager {
 
 		if (this.tor.available) {
 			if (!this.tor.running) this.tor.start(address);
-			else this.tor.stop();
+		}
+
+		if (this.i2p.available) {
+			if (!this.i2p.running) this.i2p.start(address);
 		}
 	}
 
@@ -68,5 +74,6 @@ export default class InboundNetworkManager {
 		this.running = false;
 		await this.hyper.stop();
 		await this.tor.stop();
+		await this.i2p.stop();
 	}
 }

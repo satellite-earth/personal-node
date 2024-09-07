@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@diva.exchange/i2p-sam':
+        specifier: ^5.4.1
+        version: 5.4.1
       '@noble/hashes':
         specifier: ^1.4.0
         version: 1.4.0
@@ -199,6 +202,10 @@ packages:
 
   '@changesets/write@0.3.2':
     resolution: {integrity: sha512-kDxDrPNpUgsjDbWBvUo27PzKX4gqeKOlhibaOXDJA6kuBisGqNHv/HwGJrAu8U/dSf8ZEFIeHIPtvSlZI1kULw==}
+
+  '@diva.exchange/i2p-sam@5.4.1':
+    resolution: {integrity: sha512-/X2ezrRSxAxrEmk+z9c1fIurb1XjUyEQkvdgUdQezdOhC48XPj4Ed4LOpODGacFvOhwSwX1RAy7xV39PA2ki0w==}
+    engines: {node: '>=16.0.0'}
 
   '@holesail/hyper-cmd-lib-net@0.1.0':
     resolution: {integrity: sha512-Ru3aOXVXhIzv3gHQm9eLAEQhUbJuN9jGYywvH6ausHziORuIQxltdNFTA638RpvzQlIQB5r2E+AK/9hhie8i5g==}
@@ -1390,6 +1397,9 @@ packages:
     resolution: {integrity: sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
+  rfc4648@1.5.3:
+    resolution: {integrity: sha512-MjOWxM065+WswwnmNONOT+bD1nXzY9Km6u3kzvnx8F8/HXGZdz3T6e6vZJ8Q/RIMUSp/nxqjH3GwvJDy8ijeQQ==}
+
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
@@ -1872,6 +1882,11 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 1.0.2
       prettier: 2.8.8
+
+  '@diva.exchange/i2p-sam@5.4.1':
+    dependencies:
+      nanoid: 5.0.7
+      rfc4648: 1.5.3
 
   '@holesail/hyper-cmd-lib-net@0.1.0': {}
 
@@ -3227,6 +3242,8 @@ snapshots:
   resolve-from@5.0.0: {}
 
   reusify@1.0.4: {}
+
+  rfc4648@1.5.3: {}
 
   run-parallel@1.2.0:
     dependencies:

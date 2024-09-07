@@ -5,11 +5,13 @@ import { logger } from '../../../logger.js';
 import ConfigManager from '../../config-manager.js';
 import HyperOutbound from './hyper.js';
 import TorOutbound from './tor.js';
+import I2POutbound from './i2p.js';
 
 export class OutboundNetworkManager {
 	log = logger.extend('OutboundNetworkManager');
 	hyper: HyperOutbound;
 	tor: TorOutbound;
+	i2p: I2POutbound;
 
 	running = false;
 	agent: PacProxyAgent<string>;
@@ -21,49 +23,56 @@ export class OutboundNetworkManager {
 	constructor() {
 		this.hyper = new HyperOutbound();
 		this.tor = new TorOutbound();
+		this.i2p = new I2POutbound();
 
 		this.agent = new PacProxyAgent(this.buildPacURI(), { fallbackToDirect: true });
 	}
 
 	private buildPacURI() {
-		// 		const I2pConfig = this.enableI2PConnections
-		// 			? `
-		// if (shExpMatch(host, "*.i2p"))
-		// {
-		// 	return "SOCKS5 ${'I2P_PROXY'}";
-		// }
-		// 				`.trim()
-		// 			: '';
-		const TorConfig =
-			this.tor.available && this.enableTorConnections
-				? `
+		const statements: string[] = [];
+
+		if (this.i2p.available && this.enableI2PConnections) {
+			statements.push(
+				`
+if (shExpMatch(host, "*.i2p"))
+{
+	return "${this.i2p.type} ${this.i2p.address}";
+}
+`.trim(),
+			);
+		}
+
+		if (this.tor.available && this.enableTorConnections) {
+			statements.push(
+				`
 if (shExpMatch(host, "*.onion"))
 {
-	return "SOCKS5 ${''}";
+	return "${this.tor.type} ${this.tor.address}";
 }
-				`.trim()
-				: '';
+`.trim(),
+			);
+		}
 
-		const HyperConfig =
-			this.hyper.available && this.enableHyperConnections
-				? `
+		if (this.hyper.available && this.enableHyperConnections) {
+			statements.push(
+				`
 if (shExpMatch(host, "*.hyper"))
 {
-	return "SOCKS5 ${this.hyper.address}";
+	return "${this.hyper.type} ${this.hyper.address}";
 }
-					`.trim()
-				: '';
+`.trim(),
+			);
+		}
 
 		const PACFile = `
 // SPDX-License-Identifier: CC0-1.0
 
 function FindProxyForURL(url, host)
 {
-	${TorConfig}
-	${HyperConfig}
+	${statements.join('\n')}
 	return "DIRECT";
 }
-		`.trim();
+`.trim();
 
 		return 'pac+data:application/x-ns-proxy-autoconfig;base64,' + btoa(PACFile);
 	}
@@ -94,6 +103,11 @@ function FindProxyForURL(url, host)
 			if (this.tor.available && this.enableTorConnections !== this.tor.running) {
 				if (this.enableTorConnections) this.tor.start();
 				else this.tor.stop();
+			}
+
+			if (this.i2p.available && this.enableI2PConnections !== this.i2p.running) {
+				if (this.enableI2PConnections) this.i2p.start();
+				else this.i2p.stop();
 			}
 
 			this.updateAgentThrottle();

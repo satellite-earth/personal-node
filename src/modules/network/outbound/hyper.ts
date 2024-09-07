@@ -34,10 +34,10 @@ export default class HyperOutbound extends EventEmitter<EventMap> implements Out
 			this.port = await getPort({ port: 1080 });
 			this.proxy = createProxy({ node: await getOrCreateNode() });
 
-			this.log('Starting');
+			this.log('Starting SOCKS5 proxy');
 			this.address = `127.0.0.1:${this.port}`;
 			this.proxy.listen(this.port, '127.0.0.1');
-			this.log(`Listening on ${this.address}`);
+			this.log(`Proxy listening on ${this.address}`);
 			this.emit('started');
 		} catch (error) {
 			this.running = false;

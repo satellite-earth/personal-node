@@ -8,6 +8,8 @@ export default class NetworkStatusReport extends Report<'NETWORK_STATUS'> {
 		const torOut = this.app.outboundNetwork.tor;
 		const hyperIn = this.app.inboundNetwork.hyper;
 		const hyperOut = this.app.outboundNetwork.hyper;
+		const i2pIn = this.app.inboundNetwork.i2p;
+		const i2pOut = this.app.outboundNetwork.i2p;
 
 		this.send({
 			tor: {
@@ -36,7 +38,19 @@ export default class NetworkStatusReport extends Report<'NETWORK_STATUS'> {
 					error: hyperOut.error?.message,
 				},
 			},
-			i2p: { inbound: { available: false }, outbound: { available: false } },
+			i2p: {
+				inbound: {
+					available: i2pIn.available,
+					running: i2pIn.running,
+					error: i2pIn.error?.message,
+					address: i2pIn.address,
+				},
+				outbound: {
+					available: i2pOut.available,
+					running: i2pOut.running,
+					error: i2pOut.error?.message,
+				},
+			},
 		});
 	}
 

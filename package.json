@@ -39,6 +39,7 @@
 		"lib"
 	],
 	"dependencies": {
+		"@diva.exchange/i2p-sam": "^5.4.1",
 		"@noble/hashes": "^1.4.0",
 		"@satellite-earth/core": "^0.3.0",
 		"@satellite-earth/web-ui": "^0.3.0",

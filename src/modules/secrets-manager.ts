@@ -13,12 +13,16 @@ type Secrets = {
 	vapidPrivateKey: string;
 	vapidPublicKey: string;
 	hyperKey: Buffer;
+	i2pPrivateKey?: string;
+	i2pPublicKey?: string;
 };
 type RawJson = Partial<{
 	nostrKey: string;
 	vapidPrivateKey: string;
 	vapidPublicKey: string;
 	hyperKey: string;
+	i2pPrivateKey?: string;
+	i2pPublicKey?: string;
 }>;
 
 type EventMap = {
@@ -90,6 +94,9 @@ export default class SecretsManager extends EventEmitter<EventMap> {
 			changed = true;
 		} else secrets.hyperKey = Buffer.from(json.hyperKey, 'hex');
 
+		secrets.i2pPrivateKey = json.i2pPrivateKey;
+		secrets.i2pPublicKey = json.i2pPublicKey;
+
 		this.secrets = secrets;
 
 		this.emit('loaded');
@@ -107,6 +114,8 @@ export default class SecretsManager extends EventEmitter<EventMap> {
 			vapidPrivateKey: this.secrets.vapidPrivateKey,
 			vapidPublicKey: this.secrets.vapidPublicKey,
 			hyperKey: this.secrets.hyperKey?.toString('hex'),
+			i2pPrivateKey: this.secrets.i2pPrivateKey,
+			i2pPublicKey: this.secrets.i2pPublicKey,
 		};
 
 		fs.writeFileSync(this.path, JSON.stringify(json, null, 2), { encoding: 'utf-8' });

@@ -1,7 +1,7 @@
 import { AddressInfo } from 'net';
 
 import App from '../../../app/index.js';
-import { TOR_ADDRESS, TOR_PROXY } from '../../../env.js';
+import { TOR_ADDRESS } from '../../../env.js';
 import { logger } from '../../../logger.js';
 import { InboundInterface } from '../interfaces.js';
 
