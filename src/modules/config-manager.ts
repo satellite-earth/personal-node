@@ -24,6 +24,7 @@ export const defaultConfig: PrivateNodeConfig = {
 	enableTorConnections: true,
 	enableI2PConnections: true,
 	enableHyperConnections: false,
+	routeAllTrafficThroughTor: false,
 };
 
 export default class ConfigManager extends ReactiveJsonFileSync<PrivateNodeConfig> {

@@ -19,6 +19,7 @@ export class OutboundNetworkManager {
 	enableHyperConnections = false;
 	enableTorConnections = false;
 	enableI2PConnections = false;
+	routeAllTrafficThroughTor = false;
 
 	constructor() {
 		this.hyper = new HyperOutbound();
@@ -64,13 +65,20 @@ if (shExpMatch(host, "*.hyper"))
 			);
 		}
 
+		if (this.routeAllTrafficThroughTor && this.tor.available) {
+			// if tor is available, route all traffic through it
+			statements.push(`${this.tor.type} ${this.tor.address}`);
+			this.log('Routing all traffic through tor proxy');
+		} else {
+			statements.push('return "DIRECT";');
+		}
+
 		const PACFile = `
 // SPDX-License-Identifier: CC0-1.0
 
 function FindProxyForURL(url, host)
 {
 	${statements.join('\n')}
-	return "DIRECT";
 }
 `.trim();
 
@@ -94,6 +102,7 @@ function FindProxyForURL(url, host)
 			this.enableHyperConnections = c.hyperEnabled && c.enableHyperConnections;
 			this.enableTorConnections = c.enableTorConnections;
 			this.enableI2PConnections = c.enableI2PConnections;
+			this.routeAllTrafficThroughTor = c.routeAllTrafficThroughTor;
 
 			if (this.hyper.available && this.enableHyperConnections !== this.hyper.running) {
 				if (this.enableHyperConnections) this.hyper.start();
