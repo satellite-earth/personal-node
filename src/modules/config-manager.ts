@@ -13,8 +13,8 @@ export const defaultConfig: PrivateNodeConfig = {
 	description: '',
 
 	autoListen: false,
-	runScrapperOnBoot: false,
 	runReceiverOnBoot: true,
+	runScrapperOnBoot: false,
 	logsEnabled: true,
 	requireReadAuth: false,
 	publicAddresses: [],

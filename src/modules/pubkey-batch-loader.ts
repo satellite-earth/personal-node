@@ -20,6 +20,10 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 	pool: SimplePool;
 	loadFromCache?: (pubkey: string) => NostrEvent | undefined;
 
+	get queue() {
+		return this.next.size;
+	}
+
 	failed = new SuperMap<string, Set<string>>(() => new Set());
 
 	constructor(kind: number, pool: SimplePool, loadFromCache?: (pubkey: string) => NostrEvent | undefined) {
@@ -89,7 +93,7 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 			const requests: Record<string, Filter[]> = {};
 			for (const [relay, filter] of Object.entries(filters)) requests[relay] = [filter];
 
-			return new Promise<void>((res) => {
+			await new Promise<void>((res) => {
 				const sub = this.pool.subscribeManyMap(requests, {
 					onevent: (event) => this.handleEvent(event),
 					oneose: () => {
@@ -119,6 +123,9 @@ export default class PubkeyBatchLoader extends EventEmitter<EventMap> {
 					},
 				});
 			});
+
+			// if there are pending requests, make another request
+			if (this.next.size > 0) this.fetchEventsThrottle();
 		}
 	}
 

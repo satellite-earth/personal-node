@@ -22,8 +22,7 @@ export default class ProfileBook {
 
 		this.loader.on('event', (event) => this.app.eventStore.addEvent(event));
 		this.loader.on('batch', (found, failed) => {
-			if (failed) this.log(`Found ${found} failed ${failed}`);
-			else this.log(`Found ${found}`);
+			this.log(`Found ${found}, failed ${failed}, pending ${this.loader.queue}`);
 		});
 	}
 

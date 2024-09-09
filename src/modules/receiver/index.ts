@@ -87,6 +87,7 @@ export default class Receiver extends EventEmitter<EventMap> {
 		const ownerInboxes = getInboxes(ownerMailboxes);
 		const ownerOutboxes = getOutboxes(ownerMailboxes);
 
+		this.log('Searching for owner kind:3 contacts');
 		const contacts = await this.app.contactBook.loadContacts(owner);
 		if (!contacts) throw new Error('Cant find contacts');
 
@@ -99,6 +100,8 @@ export default class Receiver extends EventEmitter<EventMap> {
 
 		const people = getPubkeysFromList(contacts);
 
+		this.log(`Found ${people.length} contacts`);
+
 		let usersWithMailboxes = 0;
 		let usersWithContactRelays = 0;
 		let usersWithFallbackRelays = 0;
@@ -106,13 +109,14 @@ export default class Receiver extends EventEmitter<EventMap> {
 		// fetch all addresses in parallel
 		await Promise.all(
 			people.map(async (person) => {
-				const mailboxes = await this.app.addressBook.loadMailboxes(person.pubkey, ownerInboxes ?? []);
+				const mailboxes = await this.app.addressBook.loadMailboxes(person.pubkey, ownerInboxes ?? BOOTSTRAP_RELAYS);
 
 				let relays = getOutboxes(mailboxes);
 
 				// if the user does not have any mailboxes try to get the relays stored in the contact list
 				if (relays.length === 0) {
-					const contacts = await this.app.contactBook.loadContacts(person.pubkey, ownerInboxes ?? []);
+					this.log(`Failed to find mailboxes for ${person.pubkey}`);
+					const contacts = await this.app.contactBook.loadContacts(person.pubkey, ownerInboxes ?? BOOTSTRAP_RELAYS);
 
 					if (contacts && contacts.content.startsWith('{')) {
 						const parsed = getRelaysFromContactList(contacts);

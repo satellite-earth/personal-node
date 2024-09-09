@@ -6,6 +6,10 @@ import { AbstractRelay, Subscription } from 'nostr-tools/abstract-relay';
 
 import { logger } from '../../logger.js';
 
+function stripProtocol(url: string) {
+	return url.replace(/^\w+\:\/\//, '');
+}
+
 const DEFAULT_LIMIT = 1000;
 
 export type PubkeyRelayScrapperState = {
@@ -49,7 +53,7 @@ export default class PubkeyRelayScrapper extends EventEmitter<EventMap> {
 		this.relay = relay;
 		if (state) this.state = state;
 
-		this.log = logger.extend('scrapper:' + pubkey + ':' + relay.url);
+		this.log = logger.extend('scrapper:' + pubkey + ':' + stripProtocol(relay.url));
 	}
 
 	async loadNext() {
