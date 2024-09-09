@@ -8,7 +8,7 @@ import { InboundInterface } from '../interfaces.js';
 
 export default class I2PInbound implements InboundInterface {
 	app: App;
-	log = logger.extend('I2PInbound');
+	log = logger.extend('Network:Inbound:I2P');
 
 	available = !!I2P_SAM_ADDRESS;
 	running = false;

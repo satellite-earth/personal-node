@@ -11,7 +11,7 @@ type EventMap = {
 };
 
 export default class HyperOutbound extends EventEmitter<EventMap> implements OutboundInterface {
-	log = logger.extend('HyperOutbound');
+	log = logger.extend('Network:Outbound:Hyper');
 	private port?: number;
 	private proxy?: ReturnType<typeof createProxy>;
 

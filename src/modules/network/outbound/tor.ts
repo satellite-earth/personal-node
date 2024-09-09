@@ -4,7 +4,7 @@ import { TOR_PROXY, TOR_PROXY_TYPE } from '../../../env.js';
 import { testTCPConnection } from '../../../helpers/network.js';
 
 export default class TorOutbound implements OutboundInterface {
-	log = logger.extend('TorOutbound');
+	log = logger.extend('Network:Outbound:Tor');
 
 	running = false;
 	error?: Error;

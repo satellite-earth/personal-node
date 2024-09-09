@@ -9,7 +9,7 @@ import I2PInbound from './i2p.js';
 /** manages all inbound servers on other networks: hyper, tor, i2p, etc... */
 export default class InboundNetworkManager {
 	app: App;
-	log = logger.extend('InboundNetworkManager');
+	log = logger.extend('Network:Inbound');
 	hyper: HyperInbound;
 	tor: TorInbound;
 	i2p: I2PInbound;

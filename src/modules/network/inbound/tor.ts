@@ -7,7 +7,7 @@ import { InboundInterface } from '../interfaces.js';
 
 export default class TorInbound implements InboundInterface {
 	app: App;
-	log = logger.extend('TorInbound');
+	log = logger.extend('Network:Inbound:Tor');
 
 	readonly available = !!TOR_ADDRESS;
 	readonly running = !!TOR_ADDRESS;

@@ -8,7 +8,7 @@ import TorOutbound from './tor.js';
 import I2POutbound from './i2p.js';
 
 export class OutboundNetworkManager {
-	log = logger.extend('OutboundNetworkManager');
+	log = logger.extend('Network:Outbound');
 	hyper: HyperOutbound;
 	tor: TorOutbound;
 	i2p: I2POutbound;

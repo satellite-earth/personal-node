@@ -11,7 +11,7 @@ import { logger } from '../../../logger.js';
 export default class HyperInbound implements InboundInterface {
 	app: App;
 	hyper?: HolesailServer;
-	log = logger.extend('HyperInbound');
+	log = logger.extend('Network:Inbound:Hyper');
 
 	get available() {
 		return true;

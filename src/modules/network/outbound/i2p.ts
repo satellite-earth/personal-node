@@ -4,7 +4,7 @@ import { I2P_PROXY, I2P_PROXY_TYPE } from '../../../env.js';
 import { testTCPConnection } from '../../../helpers/network.js';
 
 export default class I2POutbound implements OutboundInterface {
-	log = logger.extend('I2POutbound');
+	log = logger.extend('Network:Outbound:I2P');
 
 	running = false;
 	error?: Error;
