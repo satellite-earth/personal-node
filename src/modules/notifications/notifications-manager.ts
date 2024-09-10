@@ -106,6 +106,7 @@ export default class NotificationsManager {
 		this.log(`Sending notification for ${event.id} to ${this.state.subscriptions.length} subscriptions`);
 
 		for (const sub of this.state.subscriptions) {
+			this.log(`Sending notification "${notification.title}" to ${sub.id} (${sub.type})`);
 			try {
 				switch (sub.type) {
 					case 'web':
@@ -141,7 +142,7 @@ export default class NotificationsManager {
 							method: 'POST',
 							body: notification.body,
 							headers,
-						});
+						}).then((res) => res.text());
 						break;
 
 					default:
