@@ -30,12 +30,12 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 	key: string;
 	database: Database;
 
-	constructor(database: Database, key: string, initialState?: T) {
+	constructor(database: Database, key: string, initialState: T) {
 		super();
 		this.state = initialState;
 		this.key = key;
 		this.database = database;
-		this.log = logger.extend(`state:` + key);
+		this.log = logger.extend(`State:` + key);
 		this.createProxy();
 	}
 
@@ -63,7 +63,10 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 			.prepare<[string], { id: string; state: string }>(`SELECT id, state FROM application_state WHERE id=?`)
 			.get(this.key);
 
-		this.state = row ? JSON.parse(row.state) : {};
+		const state: T | undefined = row ? (JSON.parse(row.state) as T) : undefined;
+		if (state && this.state) Object.assign(this.state, state);
+		else throw new Error(`Missing initial state for ${this.key}`);
+
 		this.createProxy();
 
 		if (this.state) {
@@ -79,5 +82,6 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 			.run(this.key, JSON.stringify(this.state));
 
 		this.emit('saved', this.state);
+		this.log('Saved');
 	}
 }

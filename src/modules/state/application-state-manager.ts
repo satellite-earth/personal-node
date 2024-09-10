@@ -31,7 +31,7 @@ export default class ApplicationStateManager {
 		await migrations.run(this.database);
 	}
 
-	async getMutableState<T extends object>(key: string, initialState?: T) {
+	async getMutableState<T extends object>(key: string, initialState: T) {
 		const cached = this.mutableState.get(key);
 		if (cached) return cached as MutableState<T>;
 

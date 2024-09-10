@@ -167,10 +167,15 @@ export default class App extends EventEmitter<EventMap> {
 
 		// Setup the notifications manager
 		this.notifications = new NotificationsManager(this /*this.eventStore, this.state*/);
-		this.notifications.keys = {
+		this.notifications.webPushKeys = {
 			publicKey: this.secrets.get('vapidPublicKey'),
 			privateKey: this.secrets.get('vapidPrivateKey'),
 		};
+		this.notifications.setup();
+
+		this.eventStore.on('event:inserted', (event) => {
+			if (this.notifications.shouldNotify(event)) this.notifications.notify(event);
+		});
 
 		// Initializes receiver and scrapper for pulling data from remote relays
 		this.receiver = new Receiver(this);

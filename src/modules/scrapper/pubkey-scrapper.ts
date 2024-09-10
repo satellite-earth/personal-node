@@ -54,7 +54,10 @@ export default class PubkeyScrapper extends EventEmitter<EventMap> {
 					scrapper.on('event', (event) => this.emit('event', event));
 
 					// load the state from the database
-					const state = await this.app.state.getMutableState<PubkeyRelayScrapperState>(`${this.pubkey}|${relay.url}`);
+					const state = await this.app.state.getMutableState<PubkeyRelayScrapperState>(
+						`${this.pubkey}|${relay.url}`,
+						{},
+					);
 					if (state) scrapper.state = state.proxy;
 
 					this.relayScrappers.set(url, scrapper);

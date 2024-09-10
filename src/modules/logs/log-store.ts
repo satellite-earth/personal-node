@@ -52,8 +52,8 @@ export default class LogStore extends EventEmitter<EventMap> {
 		this.debug = logger;
 	}
 
-	setup() {
-		return migrations.run(this.database);
+	async setup() {
+		return await migrations.run(this.database);
 	}
 
 	addEntry(service: string, timestamp: Date | number, message: string) {
