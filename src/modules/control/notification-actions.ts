@@ -21,11 +21,11 @@ export default class NotificationActions implements ControlMessageHandler {
 				return true;
 
 			case 'LIST':
-				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'LIST', this.app.notifications.state.subscriptions]);
+				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'LIST', this.app.notifications.state.channels]);
 				return true;
 
 			case 'REGISTER':
-				this.app.notifications.registerSubscription(message[3]);
+				this.app.notifications.addOrUpdateChannel(message[3]);
 				return true;
 
 			case 'NOTIFY':
@@ -34,7 +34,7 @@ export default class NotificationActions implements ControlMessageHandler {
 				return true;
 
 			case 'UNREGISTER':
-				this.app.notifications.unregisterSubscription(message[3]);
+				this.app.notifications.removeChannel(message[3]);
 				return true;
 
 			default:

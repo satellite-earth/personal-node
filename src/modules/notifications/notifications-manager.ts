@@ -1,69 +1,70 @@
-import {
-	NotificationSubscription,
-	WebPushNotification,
-} from '@satellite-earth/core/types/control-api/notifications.js';
-import { NostrEvent, kinds } from 'nostr-tools';
+import { NotificationChannel, WebPushNotification } from '@satellite-earth/core/types/control-api/notifications.js';
 import { getDMRecipient, getDMSender, getUserDisplayName, parseKind0Event } from '@satellite-earth/core/helpers/nostr';
-import dayjs from 'dayjs';
-import webPush from 'web-push';
+import { NostrEvent, kinds } from 'nostr-tools';
 import { npubEncode } from 'nostr-tools/nip19';
+import EventEmitter from 'events';
+import webPush from 'web-push';
+import dayjs from 'dayjs';
 
 import { logger } from '../../logger.js';
 import App from '../../app/index.js';
 
 export type NotificationsManagerState = {
-	subscriptions: NotificationSubscription[];
+	channels: NotificationChannel[];
 };
 
-export default class NotificationsManager {
+type EventMap = {
+	addChannel: [NotificationChannel];
+	updateChannel: [NotificationChannel];
+	removeChannel: [NotificationChannel];
+};
+
+export default class NotificationsManager extends EventEmitter<EventMap> {
 	log = logger.extend('Notifications');
 	app: App;
 	lastRead: number = dayjs().unix();
 
 	webPushKeys: webPush.VapidKeys = webPush.generateVAPIDKeys();
 
-	state: NotificationsManagerState = { subscriptions: [] };
+	state: NotificationsManagerState = { channels: [] };
+
+	get channels() {
+		return this.state.channels;
+	}
 
 	constructor(app: App) {
+		super();
 		this.app = app;
 	}
 
 	async setup() {
 		this.state = (
-			await this.app.state.getMutableState<NotificationsManagerState>('notification-manager', { subscriptions: [] })
+			await this.app.state.getMutableState<NotificationsManagerState>('notification-manager', { channels: [] })
 		).proxy;
 	}
 
-	private checkDuplicate(sub: NotificationSubscription) {
-		const { subscriptions } = this.state;
-
-		switch (sub.type) {
-			case 'web':
-				const key = sub.keys.p256dh;
-				if (subscriptions.some((s) => s.type === 'web' && s.keys.p256dh === key)) {
-					return true;
-				}
-				break;
-			case 'ntfy':
-				if (subscriptions.some((s) => s.type === 'ntfy' && s.server === sub.server && s.topic === sub.topic)) {
-					return true;
-				}
-				break;
+	addOrUpdateChannel(channel: NotificationChannel) {
+		if (this.state.channels.some((c) => c.id === channel.id)) {
+			// update channel
+			this.log(`Updating channel ${channel.id} (${channel.type})`);
+			this.state.channels = this.state.channels.map((c) => {
+				if (c.id === channel.id) return channel;
+				else return c;
+			});
+			this.emit('updateChannel', channel);
+		} else {
+			// add channel
+			this.log(`Added new channel ${channel.id} (${channel.type})`);
+			this.state.channels = [...this.state.channels, channel];
+			this.emit('addChannel', channel);
 		}
-
-		return false;
 	}
-
-	registerSubscription(sub: NotificationSubscription) {
-		if (this.checkDuplicate(sub)) return;
-
-		this.log(`Added new subscription ${sub.id} (${sub.type})`);
-		this.state.subscriptions = [...this.state.subscriptions, sub];
-	}
-	unregisterSubscription(id: string) {
-		if (this.state.subscriptions.some((s) => s.id === id)) {
-			this.log(`Removed subscription ${id}`);
-			this.state.subscriptions = this.state.subscriptions.filter((s) => s.id !== id);
+	removeChannel(id: string) {
+		const channel = this.state.channels.find((s) => s.id === id);
+		if (channel) {
+			this.log(`Removed channel ${id}`);
+			this.state.channels = this.state.channels.filter((s) => s.id !== id);
+			this.emit('removeChannel', channel);
 		}
 	}
 
@@ -77,7 +78,7 @@ export default class NotificationsManager {
 
 	/** builds a notification based on a nostr event */
 	async buildNotification(event: NostrEvent) {
-		// TODO in the future we might need to build special notifications for subscription type
+		// TODO in the future we might need to build special notifications for channel type
 		switch (event.kind) {
 			case kinds.EncryptedDirectMessage:
 				const sender = getDMSender(event);
@@ -103,12 +104,12 @@ export default class NotificationsManager {
 		const notification = await this.buildNotification(event);
 		if (!notification) return;
 
-		this.log(`Sending notification for ${event.id} to ${this.state.subscriptions.length} subscriptions`);
+		this.log(`Sending notification for ${event.id} to ${this.state.channels.length} channels`);
 
-		for (const sub of this.state.subscriptions) {
-			this.log(`Sending notification "${notification.title}" to ${sub.id} (${sub.type})`);
+		for (const channel of this.state.channels) {
+			this.log(`Sending notification "${notification.title}" to ${channel.id} (${channel.type})`);
 			try {
-				switch (sub.type) {
+				switch (channel.type) {
 					case 'web':
 						const pushNotification: WebPushNotification = {
 							title: notification.title,
@@ -118,7 +119,7 @@ export default class NotificationsManager {
 							event: notification.event,
 						};
 
-						await webPush.sendNotification(sub, JSON.stringify(pushNotification), {
+						await webPush.sendNotification(channel, JSON.stringify(pushNotification), {
 							vapidDetails: {
 								subject: 'mailto:admin@example.com',
 								publicKey: this.webPushKeys.publicKey,
@@ -138,7 +139,7 @@ export default class NotificationsManager {
 							headers['Email'] = this.app.config.data.notificationEmail;
 						}
 
-						await fetch(new URL(sub.topic, sub.server), {
+						await fetch(new URL(channel.topic, channel.server), {
 							method: 'POST',
 							body: notification.body,
 							headers,
@@ -147,10 +148,10 @@ export default class NotificationsManager {
 
 					default:
 						// @ts-expect-error
-						throw new Error(`Unknown subscription type ${sub.type}`);
+						throw new Error(`Unknown channel type ${channel.type}`);
 				}
 			} catch (error) {
-				this.log(`Failed to send push notification ${sub.id}`);
+				this.log(`Failed to notification ${channel.id} (${channel.type})`);
 				this.log(error);
 			}
 		}

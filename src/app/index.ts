@@ -10,12 +10,23 @@ import express, { Express } from 'express';
 import { EventEmitter } from 'events';
 import cors from 'cors';
 
+import { logger } from '../logger.js';
 import Database from './database.js';
 
 import { NIP_11_SOFTWARE_URL, SENSITIVE_KINDS } from '../const.js';
 import { AUTH, DATA_PATH, OWNER_PUBKEY, PORT } from '../env.js';
 
 import { isHex } from '../helpers/pubkey.js';
+
+import OverviewReport from '../modules/reports/reports/overview.js';
+import ConversationsReport from '../modules/reports/reports/conversations.js';
+import LogsReport from '../modules/reports/reports/logs.js';
+import ServicesReport from '../modules/reports/reports/services.js';
+import DMSearchReport from '../modules/reports/reports/dm-search.js';
+import ScrapperStatusReport from '../modules/reports/reports/scrapper-status.js';
+import ReceiverStatusReport from '../modules/reports/reports/receiver-status.js';
+import NetworkStatusReport from '../modules/reports/reports/network-status.js';
+import NotificationChannelsReport from '../modules/reports/reports/notification-channels.js';
 
 import ConfigManager from '../modules/config-manager.js';
 import { BlobDownloader } from '../modules/blob-downloader.js';
@@ -34,24 +45,15 @@ import ContactBook from '../modules/contact-book.js';
 import CautiousPool from '../modules/cautious-pool.js';
 import RemoteAuthActions from '../modules/control/remote-auth-actions.js';
 import ReportActions from '../modules/control/report-actions.js';
-import OverviewReport from '../modules/reports/reports/overview.js';
-import ConversationsReport from '../modules/reports/reports/conversations.js';
-import LogsReport from '../modules/reports/reports/logs.js';
 import LogStore from '../modules/logs/log-store.js';
-import ServicesReport from '../modules/reports/reports/services.js';
 import DecryptionCache from '../modules/decryption-cache/decryption-cache.js';
 import DecryptionCacheActions from '../modules/control/decryption-cache.js';
-import { logger } from '../logger.js';
-import DMSearchReport from '../modules/reports/reports/dm-search.js';
 import Scrapper from '../modules/scrapper/index.js';
 import LogsActions from '../modules/control/logs-actions.js';
 import ApplicationStateManager from '../modules/state/application-state-manager.js';
-import ScrapperStatusReport from '../modules/reports/reports/scrapper-status.js';
 import ScrapperActions from '../modules/control/scrapper-actions.js';
-import ReceiverStatusReport from '../modules/reports/reports/receiver-status.js';
 import InboundNetworkManager from '../modules/network/inbound/index.js';
 import SecretsManager from '../modules/secrets-manager.js';
-import NetworkStatusReport from '../modules/reports/reports/network-status.js';
 import outboundNetwork, { OutboundNetworkManager } from '../modules/network/outbound/index.js';
 
 type EventMap = {
@@ -217,6 +219,7 @@ export default class App extends EventEmitter<EventMap> {
 			SCRAPPER_STATUS: ScrapperStatusReport,
 			RECEIVER_STATUS: ReceiverStatusReport,
 			NETWORK_STATUS: NetworkStatusReport,
+			NOTIFICATION_CHANNELS: NotificationChannelsReport,
 		};
 		this.control.registerHandler(this.reports);
 
