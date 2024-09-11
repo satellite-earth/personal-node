@@ -20,10 +20,6 @@ export default class NotificationActions implements ControlMessageHandler {
 				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'VAPID-KEY', this.app.notifications.webPushKeys.publicKey]);
 				return true;
 
-			case 'LIST':
-				this.send(sock, ['CONTROL', 'NOTIFICATIONS', 'LIST', this.app.notifications.state.channels]);
-				return true;
-
 			case 'REGISTER':
 				this.app.notifications.addOrUpdateChannel(message[3]);
 				return true;
