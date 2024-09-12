@@ -64,8 +64,12 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 			.get(this.key);
 
 		const state: T | undefined = row ? (JSON.parse(row.state) as T) : undefined;
-		if (state && this.state) Object.assign(this.state, state);
-		else throw new Error(`Missing initial state for ${this.key}`);
+		if (state && this.state) {
+			Object.assign(this.state, state);
+			this.log('Loaded');
+		}
+
+		if (!this.state) throw new Error(`Missing initial state for ${this.key}`);
 
 		this.createProxy();
 
@@ -81,7 +85,7 @@ export class MutableState<T extends object> extends EventEmitter<EventMap<T>> {
 			.prepare<[string, string]>(`INSERT OR REPLACE INTO application_state (id, state) VALUES (?, ?)`)
 			.run(this.key, JSON.stringify(this.state));
 
-		this.emit('saved', this.state);
 		this.log('Saved');
+		this.emit('saved', this.state);
 	}
 }
