@@ -5,25 +5,25 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-WORKDIR /packages
-COPY ./packages /packages/
+WORKDIR /app
+COPY ./packages packages
 
 FROM base AS prod-deps
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store cd packages && pnpm install --prod --frozen-lockfile && pnpm rebuild
 
 FROM base AS build
 RUN apt-get update && apt-get install -y make
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN make install build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store cd packages && pnpm install --frozen-lockfile && pnpm rebuild
+RUN cd packages && make build
 
 FROM base AS main
-COPY --from=prod-deps /packages/node_modules /packages/node_modules
-COPY --from=prod-deps /packages/apps/web-ui/node_modules /packages/apps/web-ui/node_modules
-COPY --from=prod-deps /packages/apps/personal-node/node_modules /packages/apps/personal-node/node_modules
-COPY --from=prod-deps /packages/packages/core/node_modules /packages/packages/core/node_modules
-COPY --from=build /packages/apps/web-ui/dist /packages/apps/web-ui/dist
-COPY --from=build /packages/apps/personal-node/dist /packages/apps/personal-node/dist
-COPY --from=build /packages/packages/core/dist /packages/packages/core/dist
+COPY --from=prod-deps /app/packages/node_modules /app/packages/node_modules
+COPY --from=prod-deps /app/packages/apps/web-ui/node_modules /app/packages/apps/web-ui/node_modules
+COPY --from=prod-deps /app/packages/apps/personal-node/node_modules /app/packages/apps/personal-node/node_modules
+COPY --from=prod-deps /app/packages/packages/core/node_modules /app/packages/packages/core/node_modules
+COPY --from=build /app/packages/apps/web-ui/dist /app/packages/apps/web-ui/dist
+COPY --from=build /app/packages/apps/personal-node/dist /app/packages/apps/personal-node/dist
+COPY --from=build /app/packages/packages/core/dist /app/packages/packages/core/dist
 
 VOLUME [ "/app/data" ]
 EXPOSE 3000
@@ -31,5 +31,5 @@ EXPOSE 3000
 ENV PORT="3000"
 ENV DATA_DIR="/app/data"
 
-WORKDIR /packages/apps/personal-node
+WORKDIR /app/packages/apps/personal-node
 CMD [ "node", "." ]
