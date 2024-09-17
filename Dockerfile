@@ -18,7 +18,6 @@ RUN cd packages && make build
 
 FROM base AS main
 COPY --from=prod-deps /app/packages/node_modules /app/packages/node_modules
-COPY --from=prod-deps /app/packages/apps/web-ui/node_modules /app/packages/apps/web-ui/node_modules
 COPY --from=prod-deps /app/packages/apps/personal-node/node_modules /app/packages/apps/personal-node/node_modules
 COPY --from=prod-deps /app/packages/packages/core/node_modules /app/packages/packages/core/node_modules
 COPY --from=build /app/packages/apps/web-ui/dist /app/packages/apps/web-ui/dist
